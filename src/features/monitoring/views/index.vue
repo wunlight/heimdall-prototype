@@ -2,6 +2,7 @@
 import { useBuildingStore } from '@/stores/building.store.ts'
 import { onMounted, ref } from 'vue'
 import BuildingModel from '../components/building-model.vue'
+import FloorsCarousel from '../components/floors-carousel.vue'
 import GeoMap from '../components/geo-map.vue'
 import GridBackground from '../components/grid-background.vue'
 import { useAppInit } from '../composables/use-app-init.ts'
@@ -39,9 +40,20 @@ onMounted(async () => {
         <GeoMap class="pointer-events-auto" />
       </template>
 
-      <!-- THREE - BUILDING MODEL -->
-      <template v-else-if="viewMode === '3D' && buildingStore.floors.length">
-        <BuildingModel :floors="buildingStore.floors" class="pointer-events-auto" />
+      <template v-else-if="buildingStore.floors.length">
+        <!-- THREE - BUILDING MODEL -->
+        <BuildingModel
+          v-if="viewMode === '3D'"
+          :floors="buildingStore.floors"
+          class="pointer-events-auto"
+        />
+
+        <!-- LEAFLET - IMAGE OVERLAY MAP -->
+        <FloorsCarousel
+          v-else-if="viewMode === '2D'"
+          :key="`${buildingStore.activeBuilding.id}-2d`"
+          :floors="buildingStore.floors"
+        />
       </template>
     </div>
 
@@ -60,7 +72,7 @@ onMounted(async () => {
     <div class="absolute isolate inset-0 z-3">
       <div
         v-if="!!buildingStore.activeBuilding"
-        class="absolute left-3 top-3 z-1 flex flex-col gap-3"
+        class="absolute right-3 bottom-3 z-1 flex flex-col gap-3"
       >
         <SelectButton
           v-model="viewMode"
@@ -72,20 +84,29 @@ onMounted(async () => {
           }"
         />
       </div>
-      <div class="absolute right-3 top-3 z-1 flex flex-col gap-3">
-        <Card :pt="{ root: 'w-64 pointer-events-auto', body: 'p-1.5!' }">
+      <div class="absolute left-3 top-3 z-1 flex flex-col gap-3">
+        <Card
+          :pt="{
+            root: 'max-h-64 w-64 pointer-events-auto',
+            body: 'p-1.5! min-h-0',
+            content: 'min-h-0 overflow-y-auto',
+          }"
+        >
           <template #content>
             <div class="flex flex-col gap-2">
-              <Button
-                v-for="item in buildingStore.buildings"
-                :key="item.id"
-                :label="item.name"
-                icon="icon-[tabler--building]"
-                severity="secondary"
-                fluid
-                class="justify-start!"
-                @click="buildingStore.selectBuilding(item)"
-              />
+              <template v-if="buildingStore.buildings">
+                <Button
+                  v-for="item in buildingStore.buildings"
+                  :key="item.id"
+                  :label="item.name"
+                  icon="icon-[tabler--building]"
+                  severity="secondary"
+                  fluid
+                  class="justify-start!"
+                  @click="buildingStore.selectBuilding(item)"
+                />
+              </template>
+              <p v-else class="py-6 text-sm text-slate-500">No building found!</p>
             </div>
           </template>
         </Card>
