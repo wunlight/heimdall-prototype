@@ -40,7 +40,7 @@ onMounted(async () => {
       </template>
 
       <!-- THREE - BUILDING MODEL -->
-      <template v-else-if="buildingStore.floors.length">
+      <template v-else-if="viewMode === '3D' && buildingStore.floors.length">
         <BuildingModel :floors="buildingStore.floors" class="pointer-events-auto" />
       </template>
     </div>

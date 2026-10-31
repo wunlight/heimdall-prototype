@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Floor } from '@/types/entity.type'
-import { nextTick, onMounted, useTemplateRef, watch } from 'vue'
-import { useBuildingScene } from '../composables/use-building-scene'
+import { nextTick, onMounted, onUnmounted, useTemplateRef, watch } from 'vue'
+import { disposeBuildingScene, useBuildingScene } from '../composables/use-building-scene'
 
 type Props = {
   floors: null | Floor[]
@@ -35,7 +35,7 @@ const loadModel = async (floors: Floor[]) => {
 }
 
 onMounted(() => {
-  if (props.floors) {
+  if (props.floors?.length) {
     loadModel(props.floors)
   }
 })
@@ -48,6 +48,11 @@ watch(
     }
   },
 )
+
+onUnmounted(() => {
+  disposeBuildingScene()
+  sceneInstance = null
+})
 </script>
 
 <template>
