@@ -39,7 +39,7 @@ function installPrimevue(app: App) {
     theme: {
       preset,
       options: {
-        darkModeSelector: '.dark',
+        // darkModeSelector: '.dark',
       },
     },
   })
