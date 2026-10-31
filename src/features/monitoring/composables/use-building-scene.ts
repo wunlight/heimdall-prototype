@@ -22,12 +22,47 @@ let globalRenderer: WebGLRenderer | null = null
 let globalControls: OrbitControls | null = null
 let globalTextureLoader: TextureLoader | null = null
 let globalAnimationFrameId: number | null = null
+let globalFloorMeshes: Mesh[] = []
+let globalInteractiveAreas: Mesh[] = []
 
 export const useBuildingScene = (container: HTMLDivElement) => {
   const { camera, controls, renderer, scene, textureLoader } = initGlobalScene(container)
 
-  const floorMeshes: Mesh[] = []
-  const interactiveAreas: Mesh[] = []
+  const clearFloors = () => {
+    const disposeMaterial = (mat: any) => {
+      if (mat.map) mat.map.dispose()
+      mat.dispose()
+    }
+
+    globalFloorMeshes.forEach((mesh) => {
+      scene.remove(mesh)
+      mesh.geometry.dispose()
+      if (Array.isArray(mesh.material)) {
+        mesh.material.forEach(disposeMaterial)
+      } else {
+        disposeMaterial(mesh.material)
+      }
+    })
+
+    globalInteractiveAreas.forEach((area) => {
+      scene.remove(area)
+      area.geometry.dispose()
+      area.children.forEach((child) => {
+        if (child instanceof LineSegments) {
+          child.geometry.dispose()
+          ;(child.material as LineBasicMaterial).dispose()
+        }
+      })
+      if (Array.isArray(area.material)) {
+        area.material.forEach(disposeMaterial)
+      } else {
+        disposeMaterial(area.material)
+      }
+    })
+
+    globalFloorMeshes.length = 0
+    globalInteractiveAreas.length = 0
+  }
 
   const loadFloorLayer = (imgSrc: string, yPos: number, baseScale: number = 40) => {
     return new Promise<{ width: number; depth: number }>((resolve) => {
@@ -53,7 +88,7 @@ export const useBuildingScene = (container: HTMLDivElement) => {
           plane.position.y = yPos
 
           scene.add(plane)
-          floorMeshes.push(plane)
+          globalFloorMeshes.push(plane)
 
           resolve({ width: planeWidth, depth: planeDepth })
         },
@@ -90,7 +125,7 @@ export const useBuildingScene = (container: HTMLDivElement) => {
     box.userData = { id: floorId, name: floorName }
 
     scene.add(box)
-    interactiveAreas.push(box)
+    globalInteractiveAreas.push(box)
 
     const edges = new EdgesGeometry(geometry)
     const line = new LineBasicMaterial({
@@ -117,7 +152,7 @@ export const useBuildingScene = (container: HTMLDivElement) => {
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
 
     raycaster.setFromCamera(mouse, camera)
-    const intersects = raycaster.intersectObjects(interactiveAreas)
+    const intersects = raycaster.intersectObjects(globalInteractiveAreas)
 
     if (intersects.length > 0) {
       const clickedObject = intersects[0]!.object as Mesh
@@ -134,7 +169,7 @@ export const useBuildingScene = (container: HTMLDivElement) => {
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
 
     raycaster.setFromCamera(mouse, camera)
-    const intersects = raycaster.intersectObjects(interactiveAreas)
+    const intersects = raycaster.intersectObjects(globalInteractiveAreas)
 
     if (intersects.length > 0) {
       const currentIntersected = intersects[0]!.object as Mesh
@@ -162,40 +197,7 @@ export const useBuildingScene = (container: HTMLDivElement) => {
 
   const dispose = () => {
     renderer.domElement.removeEventListener('pointermove', handlePointerMove)
-
-    const disposeMaterial = (mat: any) => {
-      if (mat.map) mat.map.dispose()
-      mat.dispose()
-    }
-
-    floorMeshes.forEach((mesh) => {
-      scene.remove(mesh)
-      mesh.geometry.dispose()
-      if (Array.isArray(mesh.material)) {
-        mesh.material.forEach(disposeMaterial)
-      } else {
-        disposeMaterial(mesh.material)
-      }
-    })
-
-    interactiveAreas.forEach((area) => {
-      scene.remove(area)
-      area.geometry.dispose()
-      area.children.forEach((child) => {
-        if (child instanceof LineSegments) {
-          child.geometry.dispose()
-          ;(child.material as LineBasicMaterial).dispose()
-        }
-      })
-      if (Array.isArray(area.material)) {
-        area.material.forEach(disposeMaterial)
-      } else {
-        disposeMaterial(area.material)
-      }
-    })
-
-    floorMeshes.length = 0
-    interactiveAreas.length = 0
+    clearFloors()
   }
 
   return {
@@ -204,6 +206,7 @@ export const useBuildingScene = (container: HTMLDivElement) => {
     renderer,
     loadFloorArea,
     loadFloorLayer,
+    clearFloors,
     handleCanvasClick,
     dispose,
   }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Floor } from '@/types/entity.type'
-import { onMounted, useTemplateRef, watch } from 'vue'
+import { nextTick, onMounted, useTemplateRef, watch } from 'vue'
 import { useBuildingScene } from '../composables/use-building-scene'
 
 type Props = {
@@ -14,17 +14,23 @@ const props = withDefaults(defineProps<Props>(), {
 const FLOOR_HEIGHT = 10
 
 const canvasContainer = useTemplateRef('canvas-container')
+let sceneInstance: ReturnType<typeof useBuildingScene> | null = null
 
-const loadModel = (floors: Floor[]) => {
+const loadModel = async (floors: Floor[]) => {
+  await nextTick()
   if (!canvasContainer.value) return
 
-  const { loadFloorArea, loadFloorLayer } = useBuildingScene(canvasContainer.value)
+  if (!sceneInstance) {
+    sceneInstance = useBuildingScene(canvasContainer.value)
+  }
+
+  sceneInstance.clearFloors()
 
   floors.forEach(async (item, idx) => {
     const yPos = idx * FLOOR_HEIGHT
-    const { depth, width } = await loadFloorLayer(item.blueprint_url, yPos)
+    const { depth, width } = await sceneInstance!.loadFloorLayer(item.blueprint_url, yPos)
 
-    loadFloorArea(yPos, item.id, item.name, width, FLOOR_HEIGHT, depth)
+    sceneInstance!.loadFloorArea(yPos, item.id, item.name, width, FLOOR_HEIGHT, depth)
   })
 }
 
@@ -45,5 +51,5 @@ watch(
 </script>
 
 <template>
-  <div ref="canvas-container" />
+  <div ref="canvas-container" class="size-full" />
 </template>

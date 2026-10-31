@@ -33,15 +33,15 @@ onMounted(async () => {
     <!-- BACKGROUND -->
     <GridBackground class="absolute isolate inset-0 z-0" />
 
-    <div class="absolute inset-0 z-1 pointer-events-auto">
+    <div class="absolute inset-0 z-1">
       <!-- LEAFLET - GEO MAP -->
       <template v-if="!buildingStore.activeBuilding">
-        <GeoMap />
+        <GeoMap class="pointer-events-auto" />
       </template>
 
       <!-- THREE - BUILDING MODEL -->
       <template v-else-if="buildingStore.floors.length">
-        <BuildingModel :floors="buildingStore.floors" />
+        <BuildingModel :floors="buildingStore.floors" class="pointer-events-auto" />
       </template>
     </div>
 
