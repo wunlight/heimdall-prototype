@@ -1,3 +1,4 @@
+import 'leaflet/dist/leaflet.css'
 import './main.css'
 
 import { createPinia } from 'pinia'

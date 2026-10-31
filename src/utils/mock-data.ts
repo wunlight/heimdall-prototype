@@ -26,7 +26,7 @@ export function generateMockData(numBuildings = 2, floorsPerBuilding = 3, device
         building_id: bId,
         name: `Lantai ${f}`,
         level: f - 1,
-        blueprint_url: `/assets/blueprints/bldg_${b}_flr_${f}.png`,
+        blueprint_url: `bldg_${b}_flr_${f}.webp`,
       })
 
       for (let d = 1; d <= devicesPerFloor; d++) {
