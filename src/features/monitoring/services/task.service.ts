@@ -1,11 +1,12 @@
-import { seedDatabase } from '@/db/operations'
+import { getAllBuildings, getFloorsByBuildingId, seedDatabase } from '@/db/operations'
 import { generateMockData } from '@/utils/mock-data'
+import { useBuildingStore } from '../stores/building.store'
 
 const IS_SEEDED_KEY = 'is_seeded'
 
 export const databaseSeeding = async (updateMsg: (msg: string) => void) => {
   if (localStorage.getItem(IS_SEEDED_KEY) === 'true') {
-    updateMsg('Database already initialized.')
+    updateMsg('Database already initialized')
     return
   }
 
@@ -13,7 +14,7 @@ export const databaseSeeding = async (updateMsg: (msg: string) => void) => {
   const data = generateMockData()
   await new Promise((resolve) => setTimeout(resolve, 500))
 
-  updateMsg('Storing data to local database...')
+  updateMsg('Storing data to local database')
   await seedDatabase({
     buildings: data.buildings,
     floors: data.floors,
@@ -22,4 +23,19 @@ export const databaseSeeding = async (updateMsg: (msg: string) => void) => {
   })
 
   localStorage.setItem(IS_SEEDED_KEY, String(true))
+}
+
+export const loadBuildings = async (updateMsg: (msg: string) => void) => {
+  updateMsg('Fetching buildings')
+  const buildings = await getAllBuildings()
+  await new Promise((resolve) => setTimeout(resolve, 500))
+
+  updateMsg('Storing buildings')
+  const store = useBuildingStore()
+  store.setBuildings(buildings)
+  await new Promise((resolve) => setTimeout(resolve, 500))
+}
+
+export const loadFloorsByBuildingId = async (id: string) => {
+  return await getFloorsByBuildingId(id)
 }

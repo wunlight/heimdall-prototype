@@ -43,14 +43,14 @@ const stateConfig = computed(() => {
 </script>
 
 <template>
-  <div class="size-full bg-surface-950">
+  <div class="bg-surface-950">
     <div class="absolute inset-0 z-0">
       <div
         class="absolute left-1/2 top-1/2 -translate-1/2 aspect-square h-[95%] rounded-full blur-[100px] transition-colors duration-500"
         :class="[stateConfig.glowBg, stateConfig.pulseSpeed]"
       />
       <div
-        class="absolute left-1/2 top-1/2 -translate-1/2 aspect-square h-[95%] rounded-full border-2 transition-colors duration-500"
+        class="absolute left-1/2 top-1/2 -translate-1/2 aspect-square h-[95%] rounded-full border-4 transition-colors duration-500"
         :class="[
           stateConfig.pingBg,
           stateConfig.pingBorder,

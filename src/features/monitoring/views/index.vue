@@ -1,29 +1,52 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import GridBackground from '../components/grid-background.vue'
-import { useAppSetup } from '../composables/app-setup.ts'
-import { INITIAL_TASKS } from '../constants/app.task.ts'
+import { ref } from 'vue'
+import BuildingList from '../components/building-list.vue'
+import MonitoringLayout from '../layouts/monitoring-layout.vue'
+import { useBuildingStore } from '../stores/building.store.ts'
 
-const { isLoading, hasError, progress, progressMessage, errorMessage, initialize } =
-  useAppSetup(INITIAL_TASKS)
+const buildingStore = useBuildingStore()
 
-onMounted(async () => {
-  initialize()
-})
+const viewMode = ref<'3D' | '2D'>('3D')
 </script>
 
 <template>
-  <div class="relative h-svh w-full pointer-events-none overflow-hidden">
-    <GridBackground class="absolute isolate inset-0 z-0" />
+  <MonitoringLayout>
+    <template #default="{ isLoading }">
+      <template v-if="!isLoading">
+        <div class="absolute inset-0 z-0">
+          <div
+            v-if="buildingStore.selectedBuilding"
+            class="grid place-content-center size-full pointer-events-auto"
+          >
+            <!--  -->
+          </div>
+        </div>
 
-    <div class="absolute inset-0 z-1 flex flex-col items-center justify-center gap-4">
-      <template v-if="isLoading">
-        <p class="text-sm text-slate-500">{{ progressMessage }}</p>
-        <ProgressBar :value="progress" class="w-96 rounded-full!" />
+        <div class="absolute left-2 top-2 z-1 h-56 w-64 overflow-hidden">
+          <BuildingList />
+        </div>
+
+        <div class="absolute right-2 top-2 z-1">
+          <div class="flex gap-1 p-1 bg-surface-900 rounded-md pointer-events-auto">
+            <Button
+              label="3D"
+              icon="icon-[tabler--cube] text-base!"
+              severity="contrast"
+              :text="viewMode !== '3D'"
+              size="small"
+              @click="viewMode = '3D'"
+            />
+            <Button
+              label="2D"
+              icon="icon-[tabler--align-box-center-middle] text-base!"
+              severity="contrast"
+              :text="viewMode !== '2D'"
+              size="small"
+              @click="viewMode = '2D'"
+            />
+          </div>
+        </div>
       </template>
-      <template v-else-if="hasError">
-        <p class="text-sm text-slate-500">{{ errorMessage }}</p>
-      </template>
-    </div>
-  </div>
+    </template>
+  </MonitoringLayout>
 </template>

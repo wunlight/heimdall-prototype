@@ -16,6 +16,7 @@ declare module 'vue' {
     ProgressBar: typeof import('primevue/progressbar')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    ScrollPanel: typeof import('primevue/scrollpanel')['default']
     SelectButton: typeof import('primevue/selectbutton')['default']
   }
 }
