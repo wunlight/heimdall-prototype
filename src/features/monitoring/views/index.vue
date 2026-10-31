@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import BuildingList from '../components/building-list.vue'
+import FloorList from '../components/floor-list.vue'
 import MonitoringLayout from '../layouts/monitoring-layout.vue'
 import { useBuildingStore } from '../stores/building.store.ts'
 
@@ -13,17 +14,24 @@ const viewMode = ref<'3D' | '2D'>('3D')
   <MonitoringLayout>
     <template #default="{ isLoading }">
       <template v-if="!isLoading">
-        <div class="absolute inset-0 z-0">
-          <div
-            v-if="buildingStore.selectedBuilding"
-            class="grid place-content-center size-full pointer-events-auto"
-          >
-            <!--  -->
-          </div>
+        <div v-if="buildingStore.selectedBuilding" class="relative isolate z-0 size-full">
+          <template v-if="viewMode === '2D'">
+            <FloorList
+              v-if="buildingStore.floors.length"
+              :floors="buildingStore.floors"
+              :selected-floor="buildingStore.selectedFloor"
+              @item-click="(item) => buildingStore.selectFloor(item)"
+            />
+          </template>
         </div>
 
         <div class="absolute left-2 top-2 z-1 h-56 w-64 overflow-hidden">
-          <BuildingList />
+          <BuildingList
+            v-if="buildingStore.buildings.length"
+            :buildings="buildingStore.buildings"
+            :selected-building="buildingStore.selectedBuilding"
+            @item-click="(item) => buildingStore.selectBuilding(item)"
+          />
         </div>
 
         <div class="absolute right-2 top-2 z-1">

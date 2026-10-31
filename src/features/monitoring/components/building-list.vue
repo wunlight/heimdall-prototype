@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { useBuildingStore } from '../stores/building.store.ts'
+import type { Building } from '@/types/entity.type.ts'
 
-const store = useBuildingStore()
+type Props = {
+  buildings: Building[]
+  selectedBuilding: null | Building
+}
+defineProps<Props>()
 
-onMounted(() => {
-  if (store.buildings.length) {
-    store.selectBuilding(store.buildings[0]!)
-  }
-})
+type Emit = {
+  (e: 'item-click', building: Building): void
+}
+const emit = defineEmits<Emit>()
 </script>
 
 <template>
@@ -21,13 +23,13 @@ onMounted(() => {
   >
     <template #content>
       <Button
-        v-for="item in store.buildings"
+        v-for="item in buildings"
         :key="item.id"
         :label="item.name"
         icon="icon-[tabler--building]"
-        :severity="store.selectedBuilding?.id === item.id ? 'contrast' : 'secondary'"
+        :severity="selectedBuilding?.id === item.id ? 'contrast' : 'secondary'"
         class="shrink-0 justify-start!"
-        @click="store.selectBuilding(item)"
+        @click="emit('item-click', item)"
       />
     </template>
   </Card>

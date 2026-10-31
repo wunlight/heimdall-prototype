@@ -6,6 +6,7 @@ interface State {
   buildings: Building[]
   floors: Floor[]
   selectedBuilding: null | Building
+  selectedFloor: null | Floor
 }
 
 export const useBuildingStore = defineStore('building', {
@@ -13,6 +14,7 @@ export const useBuildingStore = defineStore('building', {
     buildings: [],
     floors: [],
     selectedBuilding: null,
+    selectedFloor: null,
   }),
 
   actions: {
@@ -28,6 +30,10 @@ export const useBuildingStore = defineStore('building', {
 
     setFloors(data: Floor[]) {
       this.floors = data
+    },
+
+    selectFloor(data: Floor) {
+      this.selectedFloor = data
     },
   },
 })
