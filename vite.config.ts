@@ -3,7 +3,6 @@ import { fileURLToPath, URL } from 'node:url'
 import { PrimeVueResolver } from '@primevue/auto-import-resolver'
 import tailwind from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
-import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import { defineConfig, lazyPlugins } from 'vite-plus'
@@ -25,10 +24,6 @@ export default defineConfig({
     vue(),
     vueDevTools(),
     tailwind(),
-    AutoImport({
-      imports: ['vue', 'vue-router', 'pinia'],
-      dts: true,
-    }),
     Components({
       resolvers: [PrimeVueResolver()],
       dts: true,
