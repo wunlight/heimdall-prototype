@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import BuildingList from '../components/building-list.vue'
 import FloorList from '../components/floor-list.vue'
+import ImageOverlayMap from '../components/image-overlay-map.vue'
 import MonitoringLayout from '../layouts/monitoring-layout.vue'
 import { useBuildingStore } from '../stores/building.store.ts'
 
@@ -16,13 +17,21 @@ const viewMode = ref<'3D' | '2D'>('3D')
       <template v-if="!isLoading">
         <div v-if="buildingStore.selectedBuilding" class="relative isolate z-0 size-full">
           <template v-if="viewMode === '2D'">
-            <FloorList
-              v-if="buildingStore.floors.length"
-              :key="buildingStore.selectedBuilding.id"
-              :floors="buildingStore.floors"
-              :selected-floor="buildingStore.selectedFloor"
-              @item-click="(item) => buildingStore.selectFloor(item)"
-            />
+            <div class="absolute inset-0 z-0">
+              <ImageOverlayMap
+                v-if="buildingStore.selectedFloor"
+                :image-url="buildingStore.selectedFloor.blueprint_url"
+              />
+            </div>
+            <div class="absolute right-3 top-1/2 -translate-y-1/2 z-1">
+              <FloorList
+                v-if="buildingStore.floors.length"
+                :key="buildingStore.selectedBuilding.id"
+                :floors="buildingStore.floors"
+                :selected-floor="buildingStore.selectedFloor"
+                @item-click="(item) => buildingStore.selectFloor(item)"
+              />
+            </div>
           </template>
         </div>
 
