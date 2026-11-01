@@ -18,6 +18,7 @@ const viewMode = ref<'3D' | '2D'>('3D')
           <template v-if="viewMode === '2D'">
             <FloorList
               v-if="buildingStore.floors.length"
+              :key="buildingStore.selectedBuilding.id"
               :floors="buildingStore.floors"
               :selected-floor="buildingStore.selectedFloor"
               @item-click="(item) => buildingStore.selectFloor(item)"

@@ -22,14 +22,15 @@ export const useBuildingStore = defineStore('building', {
       this.buildings = data
     },
 
+    setFloors(data: Floor[]) {
+      this.floors = data
+    },
+
     async selectBuilding(data: Building) {
+      this.setFloors([])
       this.selectedBuilding = data
       const res = await loadFloorsByBuildingId(data.id)
       this.setFloors(res)
-    },
-
-    setFloors(data: Floor[]) {
-      this.floors = data
     },
 
     selectFloor(data: Floor) {

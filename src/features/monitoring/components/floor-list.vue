@@ -1,16 +1,23 @@
 <script setup lang="ts">
 import type { Floor } from '@/types/entity.type'
+import { onMounted } from 'vue'
 
 type Props = {
   floors: Floor[]
   selectedFloor: null | Floor
 }
-defineProps<Props>()
+const props = defineProps<Props>()
 
 type Emit = {
   (e: 'item-click', floor: Floor): void
 }
 const emit = defineEmits<Emit>()
+
+onMounted(() => {
+  if (props.floors.length) {
+    emit('item-click', props.floors[0]!)
+  }
+})
 </script>
 
 <template>
