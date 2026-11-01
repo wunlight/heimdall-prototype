@@ -1,4 +1,4 @@
-import { databaseSeeding, loadBuildings } from '../services/task.service.ts'
+import { databaseSeeding, loadBuildings, preLoadAllFloors } from '../services/task.service.ts'
 import type { AppTask } from '../types/task.type.ts'
 
 export const INITIAL_TASKS: AppTask[] = [
@@ -9,5 +9,9 @@ export const INITIAL_TASKS: AppTask[] = [
   {
     name: 'Load Buildings',
     action: loadBuildings,
+  },
+  {
+    name: 'Pre-load Floors',
+    action: preLoadAllFloors,
   },
 ]

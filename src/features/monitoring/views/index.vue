@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import BuildingList from '../components/building-list.vue'
 import BuildingModel from '../components/building-model.vue'
 import FloorList from '../components/floor-list.vue'
@@ -10,6 +10,12 @@ import { useBuildingStore } from '../stores/building.store.ts'
 const buildingStore = useBuildingStore()
 
 const viewMode = ref<'3D' | '2D'>('3D')
+
+// Computed floors for selected building
+const currentFloors = computed(() => {
+  if (!buildingStore.selectedBuilding) return []
+  return buildingStore.getFloorsByBuildingId(buildingStore.selectedBuilding.id)
+})
 </script>
 
 <template>
@@ -20,9 +26,10 @@ const viewMode = ref<'3D' | '2D'>('3D')
           <template v-if="viewMode === '3D'">
             <div class="absolute inset-0 z-0">
               <BuildingModel
-                v-if="buildingStore.selectedBuilding && buildingStore.floors.length > 0"
+                v-if="buildingStore.selectedBuilding"
                 :key="buildingStore.selectedBuilding.id"
-                :floors="buildingStore.floors"
+                :building-id="buildingStore.selectedBuilding.id"
+                :floors="currentFloors"
               />
             </div>
           </template>
@@ -35,9 +42,9 @@ const viewMode = ref<'3D' | '2D'>('3D')
             </div>
             <div class="absolute right-3 top-1/2 -translate-y-1/2 z-1">
               <FloorList
-                v-if="buildingStore.floors.length"
+                v-if="currentFloors.length"
                 :key="buildingStore.selectedBuilding.id"
-                :floors="buildingStore.floors"
+                :floors="currentFloors"
                 :selected-floor="buildingStore.selectedFloor"
                 @item-click="(item) => buildingStore.selectFloor(item)"
               />

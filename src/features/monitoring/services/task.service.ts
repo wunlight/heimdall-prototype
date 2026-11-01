@@ -36,6 +36,32 @@ export const loadBuildings = async (updateMsg: (msg: string) => void) => {
   await new Promise((resolve) => setTimeout(resolve, 500))
 }
 
+export const preLoadAllFloors = async (updateMsg: (msg: string) => void) => {
+  const store = useBuildingStore()
+  const buildings = store.buildings
+
+  if (buildings.length === 0) {
+    updateMsg('No buildings to preload')
+    return
+  }
+
+  updateMsg('Pre-loading all building floors')
+
+  for (let i = 0; i < buildings.length; i++) {
+    const building = buildings[i]
+    if (!building) continue
+
+    updateMsg(`Loading floors for ${building.name} (${i + 1}/${buildings.length})`)
+
+    if (!store.hasCachedFloors(building.id)) {
+      const floors = await getFloorsByBuildingId(building.id)
+      store.setCachedFloors(building.id, floors)
+    }
+  }
+
+  updateMsg('All floors pre-loaded')
+}
+
 export const loadFloorsByBuildingId = async (id: string) => {
   return await getFloorsByBuildingId(id)
 }
