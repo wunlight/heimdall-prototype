@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import BuildingList from '../components/building-list.vue'
+import BuildingModel from '../components/building-model.vue'
 import FloorList from '../components/floor-list.vue'
 import ImageOverlayMap from '../components/image-overlay-map.vue'
 import MonitoringLayout from '../layouts/monitoring-layout.vue'
@@ -16,7 +17,16 @@ const viewMode = ref<'3D' | '2D'>('3D')
     <template #default="{ isLoading }">
       <template v-if="!isLoading">
         <div v-if="buildingStore.selectedBuilding" class="relative isolate z-0 size-full">
-          <template v-if="viewMode === '2D'">
+          <template v-if="viewMode === '3D'">
+            <div class="absolute inset-0 z-0">
+              <BuildingModel
+                v-if="buildingStore.selectedBuilding && buildingStore.floors.length > 0"
+                :key="buildingStore.selectedBuilding.id"
+                :floors="buildingStore.floors"
+              />
+            </div>
+          </template>
+          <template v-else-if="viewMode === '2D'">
             <div class="absolute inset-0 z-0">
               <ImageOverlayMap
                 v-if="buildingStore.selectedFloor"

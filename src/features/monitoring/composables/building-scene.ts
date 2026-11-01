@@ -16,7 +16,6 @@ import {
   WebGLRenderer,
 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/Addons.js'
-import { onUnmounted } from 'vue'
 
 export function useBuildingScene(container: HTMLDivElement) {
   const scene = new Scene()
@@ -221,7 +220,7 @@ export function useBuildingScene(container: HTMLDivElement) {
   }
   animate()
 
-  onUnmounted(() => {
+  const disposeBuilding = () => {
     if (animationFrame !== null) {
       cancelAnimationFrame(animationFrame)
     }
@@ -267,10 +266,11 @@ export function useBuildingScene(container: HTMLDivElement) {
     if (renderer.domElement.parentNode) {
       renderer.domElement.parentNode.removeChild(renderer.domElement)
     }
-  })
+  }
 
   return {
     loadFloor,
     onFloorClick,
+    disposeBuilding,
   }
 }
