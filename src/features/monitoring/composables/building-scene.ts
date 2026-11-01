@@ -52,39 +52,36 @@ export function useBuildingScene(container: HTMLDivElement) {
   controls.minPolarAngle = LOCKED_ANGLE
   controls.maxPolarAngle = LOCKED_ANGLE
 
-  renderer.domElement.addEventListener(
-    'wheel',
-    (e) => {
-      e.preventDefault()
+  const onScroll = (e: WheelEvent) => {
+    e.preventDefault()
 
-      // ZOOM CONTROL
-      if (e.ctrlKey) {
-        const zoomSpeed = 0.1
-        const zoomFactor = e.deltaY > 0 ? 1 + zoomSpeed : 1 - zoomSpeed
-        camera.position.sub(controls.target).multiplyScalar(zoomFactor).add(controls.target)
-        controls.update()
-        return
-      }
-
-      // HORIZONTAL PAN CONTROL
-      if (e.shiftKey) {
-        const scrollSpeed = 0.05
-        const deltaX = -e.deltaY * scrollSpeed
-        camera.position.x += deltaX
-        controls.target.x += deltaX
-        controls.update()
-        return
-      }
-
-      // VERTICAL PAN CONTROL
-      const scrollSpeed = 0.05
-      const deltaY = -e.deltaY * scrollSpeed
-      camera.position.y += deltaY
-      controls.target.y += deltaY
+    // ZOOM CONTROL
+    if (e.ctrlKey) {
+      const zoomSpeed = 0.1
+      const zoomFactor = e.deltaY > 0 ? 1 + zoomSpeed : 1 - zoomSpeed
+      camera.position.sub(controls.target).multiplyScalar(zoomFactor).add(controls.target)
       controls.update()
-    },
-    { passive: false },
-  )
+      return
+    }
+
+    // HORIZONTAL PAN CONTROL
+    if (e.shiftKey) {
+      const scrollSpeed = 0.05
+      const deltaX = -e.deltaY * scrollSpeed
+      camera.position.x += deltaX
+      controls.target.x += deltaX
+      controls.update()
+      return
+    }
+
+    // VERTICAL PAN CONTROL
+    const scrollSpeed = 0.05
+    const deltaY = -e.deltaY * scrollSpeed
+    camera.position.y += deltaY
+    controls.target.y += deltaY
+    controls.update()
+  }
+  renderer.domElement.addEventListener('wheel', onScroll, { passive: false })
 
   const texture = new TextureLoader()
   const floorLayers: Mesh[] = []
@@ -176,7 +173,7 @@ export function useBuildingScene(container: HTMLDivElement) {
   const onFloorClick = (e: MouseEvent, cb?: (floor: Floor) => void) => {
     const rect = renderer.domElement.getBoundingClientRect()
     mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
-    mouse.y = ((e.clientY - rect.top) / rect.height) * 2 + 1
+    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
 
     raycaster.setFromCamera(mouse, camera)
     const intersects = raycaster.intersectObjects(floorAreas)
@@ -192,7 +189,7 @@ export function useBuildingScene(container: HTMLDivElement) {
   const onPointerMove = (e: PointerEvent) => {
     const rect = renderer.domElement.getBoundingClientRect()
     mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
-    mouse.y = ((e.clientY - rect.top) / rect.height) * 2 + 1
+    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
 
     raycaster.setFromCamera(mouse, camera)
     const intersects = raycaster.intersectObjects(floorAreas)
@@ -228,6 +225,43 @@ export function useBuildingScene(container: HTMLDivElement) {
     if (animationFrame !== null) {
       cancelAnimationFrame(animationFrame)
     }
+
+    renderer.domElement.removeEventListener('wheel', onScroll)
+    renderer.domElement.removeEventListener('pointermove', onPointerMove)
+
+    floorLayers.forEach((mesh) => {
+      scene.remove(mesh)
+      mesh.geometry.dispose()
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+      materials.forEach((mat) => {
+        const materialWithMap = mat as MeshBasicMaterial
+        if (materialWithMap.map) {
+          materialWithMap.map.dispose()
+        }
+        mat.dispose()
+      })
+    })
+
+    floorAreas.forEach((mesh) => {
+      scene.remove(mesh)
+      mesh.geometry.dispose()
+      if (Array.isArray(mesh.material)) {
+        mesh.material.forEach((mat) => mat.dispose())
+      } else {
+        mesh.material.dispose()
+      }
+      mesh.children.forEach((child) => {
+        if (child instanceof LineSegments) {
+          child.geometry.dispose()
+          if (Array.isArray(child.material)) {
+            child.material.forEach((m) => m.dispose())
+          } else {
+            child.material.dispose()
+          }
+        }
+      })
+    })
+
     controls.dispose()
     renderer.dispose()
     if (renderer.domElement.parentNode) {
