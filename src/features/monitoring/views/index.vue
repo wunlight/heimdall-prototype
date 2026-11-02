@@ -11,7 +11,6 @@ const buildingStore = useBuildingStore()
 
 const viewMode = ref<'3D' | '2D'>('3D')
 
-// Computed floors for selected building
 const currentFloors = computed(() => {
   if (!buildingStore.selectedBuilding) return []
   return buildingStore.getFloorsByBuildingId(buildingStore.selectedBuilding.id)
@@ -33,6 +32,7 @@ const currentFloors = computed(() => {
               />
             </div>
           </template>
+
           <template v-else-if="viewMode === '2D'">
             <div class="absolute inset-0 z-0">
               <ImageOverlayMap

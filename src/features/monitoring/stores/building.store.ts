@@ -26,12 +26,6 @@ export const useBuildingStore = defineStore('building', {
         return state.cachedFloors.get(buildingId) ?? []
       },
 
-    isBuildingFloorsLoading:
-      (state) =>
-      (buildingId: string): boolean => {
-        return state.loadingBuildingIds.has(buildingId)
-      },
-
     hasCachedFloors:
       (state) =>
       (buildingId: string): boolean => {
@@ -53,9 +47,7 @@ export const useBuildingStore = defineStore('building', {
       this.selectedBuilding = building
       this.selectedFloor = null
 
-      // Check if floors already cached
       if (!this.cachedFloors.has(building.id)) {
-        // Load floors and cache them
         this.loadingBuildingIds.add(building.id)
         try {
           const floors = await loadFloorsByBuildingId(building.id)
@@ -64,25 +56,6 @@ export const useBuildingStore = defineStore('building', {
           this.loadingBuildingIds.delete(building.id)
         }
       }
-    },
-
-    async preLoadBuilding(buildingId: string) {
-      // Pre-load floors without changing selected building
-      if (!this.cachedFloors.has(buildingId) && !this.loadingBuildingIds.has(buildingId)) {
-        this.loadingBuildingIds.add(buildingId)
-        try {
-          const floors = await loadFloorsByBuildingId(buildingId)
-          this.cachedFloors.set(buildingId, floors)
-        } finally {
-          this.loadingBuildingIds.delete(buildingId)
-        }
-      }
-    },
-
-    async preLoadAllBuildings() {
-      // Pre-load all buildings floors in background
-      const promises = this.buildings.map((building) => this.preLoadBuilding(building.id))
-      await Promise.allSettled(promises)
     },
 
     selectFloor(floor: Floor) {

@@ -1,4 +1,10 @@
-import { getAllBuildings, getFloorsByBuildingId, seedDatabase } from '@/db/operations'
+import {
+  getAllBuildings,
+  getCachedBlueprintUrl,
+  getFloorsByBuildingId,
+  seedDatabase,
+} from '@/db/operations'
+import type { Floor } from '@/types/entity.type'
 import { generateMockData } from '@/utils/mock-data'
 import { useBuildingStore } from '../stores/building.store'
 
@@ -25,43 +31,51 @@ export const databaseSeeding = async (updateMsg: (msg: string) => void) => {
   localStorage.setItem(IS_SEEDED_KEY, String(true))
 }
 
-export const loadBuildings = async (updateMsg: (msg: string) => void) => {
+export const loadFloorsByBuildingId = async (id: string) => {
+  return await getFloorsByBuildingId(id)
+}
+
+export const preLoadBuildings = async (updateMsg: (msg: string) => void) => {
   updateMsg('Fetching buildings')
   const buildings = await getAllBuildings()
-  await new Promise((resolve) => setTimeout(resolve, 500))
 
   updateMsg('Storing buildings')
   const store = useBuildingStore()
   store.setBuildings(buildings)
-  await new Promise((resolve) => setTimeout(resolve, 500))
-}
-
-export const preLoadAllFloors = async (updateMsg: (msg: string) => void) => {
-  const store = useBuildingStore()
-  const buildings = store.buildings
 
   if (buildings.length === 0) {
-    updateMsg('No buildings to preload')
+    updateMsg('No buildings found to preload floors')
     return
   }
 
-  updateMsg('Pre-loading all building floors')
-
+  updateMsg('Pre-load floors for all buildings')
   for (let i = 0; i < buildings.length; i++) {
     const building = buildings[i]
     if (!building) continue
 
-    updateMsg(`Loading floors for ${building.name} (${i + 1}/${buildings.length})`)
+    let floors: Floor[] = []
 
     if (!store.hasCachedFloors(building.id)) {
-      const floors = await getFloorsByBuildingId(building.id)
+      floors = await loadFloorsByBuildingId(building.id)
       store.setCachedFloors(building.id, floors)
+    } else {
+      floors = store.getFloorsByBuildingId(building.id)
+    }
+
+    if (floors && floors.length > 0) {
+      updateMsg(`Caching blueprints for building: ${building.name} (${i + 1}/${buildings.length})`)
+
+      for (const floor of floors) {
+        if (floor.blueprint_url) {
+          try {
+            await getCachedBlueprintUrl(floor.id, floor.blueprint_url)
+          } catch (e) {
+            console.warn(`Failed to cache blueprint for floor ID: ${floor.id}`, e)
+          }
+        }
+      }
     }
   }
 
-  updateMsg('All floors pre-loaded')
-}
-
-export const loadFloorsByBuildingId = async (id: string) => {
-  return await getFloorsByBuildingId(id)
+  updateMsg('Buildings, floors, and blueprints preloaded successfully')
 }
