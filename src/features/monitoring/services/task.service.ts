@@ -1,10 +1,11 @@
 import {
   getAllBuildings,
   getCachedBlueprintUrl,
+  getDevicesByFloorId,
   getFloorsByBuildingId,
   seedDatabase,
 } from '@/db/operations'
-import type { Floor } from '@/types/entity.type'
+import type { Device, Floor } from '@/types/entity.type'
 import { generateMockData } from '@/utils/mock-data'
 import { useBuildingStore } from '../stores/building.store'
 
@@ -73,9 +74,18 @@ export const preLoadBuildings = async (updateMsg: (msg: string) => void) => {
             console.warn(`Failed to cache blueprint for floor ID: ${floor.id}`, e)
           }
         }
+
+        if (!store.hasCachedDevices(floor.id)) {
+          try {
+            const devices: Device[] = await getDevicesByFloorId(floor.id)
+            store.setCachedDevices(floor.id, devices)
+          } catch (e) {
+            console.warn(`Failed to preload devices for floor ID: ${floor.id}`, e)
+          }
+        }
       }
     }
   }
 
-  updateMsg('Buildings, floors, and blueprints preloaded successfully')
+  updateMsg('Buildings, floors, blueprints, and devices preloaded successfully')
 }

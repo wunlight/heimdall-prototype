@@ -15,6 +15,11 @@ const currentFloors = computed(() => {
   if (!buildingStore.selectedBuilding) return []
   return buildingStore.getFloorsByBuildingId(buildingStore.selectedBuilding.id)
 })
+
+const currentDevices = computed(() => {
+  if (!buildingStore.selectedFloor) return []
+  return buildingStore.getDevicesByFloorId(buildingStore.selectedFloor.id)
+})
 </script>
 
 <template>
@@ -37,6 +42,7 @@ const currentFloors = computed(() => {
               <ImageOverlayMap
                 v-if="buildingStore.selectedFloor"
                 :image-url="buildingStore.selectedFloor.blueprint_url"
+                :devices="currentDevices"
               />
             </div>
             <div class="absolute right-3 top-1/2 -translate-y-1/2 z-1">

@@ -1,10 +1,11 @@
-import type { Building, Floor } from '@/types/entity.type'
+import type { Building, Device, Floor } from '@/types/entity.type'
 import { defineStore } from 'pinia'
 import { loadFloorsByBuildingId } from '../services/task.service'
 
 interface State {
   buildings: Building[]
   cachedFloors: Map<string, Floor[]>
+  cachedDevices: Map<string, Device[]>
   selectedBuilding: null | Building
   selectedFloor: null | Floor
   loadingBuildingIds: Set<string>
@@ -14,6 +15,7 @@ export const useBuildingStore = defineStore('building', {
   state: (): State => ({
     buildings: [],
     cachedFloors: new Map(),
+    cachedDevices: new Map(),
     selectedBuilding: null,
     selectedFloor: null,
     loadingBuildingIds: new Set(),
@@ -32,6 +34,19 @@ export const useBuildingStore = defineStore('building', {
         const floors = state.cachedFloors.get(buildingId)
         return floors !== undefined && floors.length > 0
       },
+
+    getDevicesByFloorId:
+      (state) =>
+      (floorId: string): Device[] => {
+        return state.cachedDevices.get(floorId) ?? []
+      },
+
+    hasCachedDevices:
+      (state) =>
+      (floorId: string): boolean => {
+        const devices = state.cachedDevices.get(floorId)
+        return devices !== undefined && devices.length > 0
+      },
   },
 
   actions: {
@@ -41,6 +56,10 @@ export const useBuildingStore = defineStore('building', {
 
     setCachedFloors(buildingId: string, floors: Floor[]) {
       this.cachedFloors.set(buildingId, floors)
+    },
+
+    setCachedDevices(floorId: string, devices: Device[]) {
+      this.cachedDevices.set(floorId, devices)
     },
 
     async selectBuilding(building: Building) {
@@ -67,6 +86,14 @@ export const useBuildingStore = defineStore('building', {
         this.cachedFloors.delete(buildingId)
       } else {
         this.cachedFloors.clear()
+      }
+    },
+
+    clearDevicesCache(floorId?: string) {
+      if (floorId) {
+        this.cachedDevices.delete(floorId)
+      } else {
+        this.cachedDevices.clear()
       }
     },
   },
