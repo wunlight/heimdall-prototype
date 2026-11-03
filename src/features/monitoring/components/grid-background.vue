@@ -60,7 +60,7 @@ const stateConfig = computed(() => {
         ]"
       />
     </div>
-    <div class="absolute inset-0 z-1 grid grid-cols-8 grid-rows-5 gap-0.5 h-full">
+    <div class="absolute inset-0 z-1 grid grid-cols-8 grid-rows-5 gap-0.75 h-full">
       <div v-for="i in 40" :key="i" class="size-full bg-surface-950" />
     </div>
   </div>
