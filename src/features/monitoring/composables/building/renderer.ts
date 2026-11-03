@@ -114,16 +114,18 @@ export function useBuildingRenderer(container: HTMLDivElement): BuildingRenderer
       if (hoveredMesh !== hoveredObject) {
         if (hoveredMesh) {
           const prevMat = hoveredMesh.material as { opacity: number }
-          prevMat.opacity = 0.3
+          if (prevMat) prevMat.opacity = 0.3
         }
         hoveredMesh = hoveredObject
         const currMat = hoveredMesh.material as { opacity: number }
-        currMat.opacity = 0.6
+        if (currMat) currMat.opacity = 0.6
       }
-    } else if (hoveredMesh) {
-      const prevMat = hoveredMesh.material as { opacity: number }
-      prevMat.opacity = 0.3
-      hoveredMesh = null
+    } else {
+      if (hoveredMesh) {
+        const prevMat = hoveredMesh.material as { opacity: number }
+        if (prevMat) prevMat.opacity = 0.3
+        hoveredMesh = null
+      }
     }
   }
 
@@ -142,6 +144,13 @@ export function useBuildingRenderer(container: HTMLDivElement): BuildingRenderer
     hoveredMesh = null
     currentScene = scene
     currentFloorAreas = floorAreas
+
+    currentFloorAreas.forEach((mesh) => {
+      const mat = mesh.material as { opacity: number }
+      if (mat) {
+        mat.opacity = 0.3
+      }
+    })
 
     if (animationFrame === null) {
       animate()
