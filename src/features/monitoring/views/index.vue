@@ -38,8 +38,10 @@ const currentFloors = computed(() => {
               <ImageOverlayMap
                 v-if="buildingStore.selectedFloor"
                 :image-url="buildingStore.selectedFloor.blueprint_url"
+                :floor-id="buildingStore.selectedFloor.id"
               />
             </div>
+
             <div class="absolute right-3 top-1/2 -translate-y-1/2 z-1">
               <FloorList
                 v-if="currentFloors.length"
@@ -67,16 +69,16 @@ const currentFloors = computed(() => {
               label="3D"
               icon="icon-[tabler--cube] text-base!"
               severity="contrast"
-              :text="viewMode !== '3D'"
               size="small"
+              :text="viewMode !== '3D'"
               @click="viewMode = '3D'"
             />
             <Button
               label="2D"
               icon="icon-[tabler--align-box-center-middle] text-base!"
               severity="contrast"
-              :text="viewMode !== '2D'"
               size="small"
+              :text="viewMode !== '2D'"
               @click="viewMode = '2D'"
             />
           </div>

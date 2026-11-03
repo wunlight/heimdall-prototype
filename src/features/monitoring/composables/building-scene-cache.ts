@@ -11,6 +11,7 @@ import {
   Scene,
   TextureLoader,
 } from 'three'
+import { getBlueprintBlobUrl } from '../services/blueprint-cache.service'
 
 export interface CachedScene {
   scene: Scene
@@ -18,7 +19,11 @@ export interface CachedScene {
   floorAreas: Mesh[]
   isLoading: boolean
   progress: number
+  loadedCount: number
+  totalCount: number
 }
+
+export type ProgressCallback = (loaded: number, total: number, floorName: string) => void
 
 const FLOOR_HEIGHT = 10
 
@@ -33,6 +38,8 @@ export function useBuildingSceneCache() {
         floorAreas: [],
         isLoading: false,
         progress: 0,
+        loadedCount: 0,
+        totalCount: 0,
       })
     }
     return sceneCache.get(buildingId)!
@@ -53,11 +60,22 @@ export function useBuildingSceneCache() {
     return cached?.progress ?? 0
   }
 
+  const getLoadedCount = (buildingId: string): number => {
+    const cached = sceneCache.get(buildingId)
+    return cached?.loadedCount ?? 0
+  }
+
+  const getTotalCount = (buildingId: string): number => {
+    const cached = sceneCache.get(buildingId)
+    return cached?.totalCount ?? 0
+  }
+
   const loadFloorsToScene = async (
     buildingId: string,
     floors: Floor[],
     baseScale: number = 40,
     initialColor: string = '#62748e',
+    onProgress?: ProgressCallback,
   ): Promise<void> => {
     const cached = getOrCreateScene(buildingId)
 
@@ -68,6 +86,8 @@ export function useBuildingSceneCache() {
 
     cached.isLoading = true
     cached.progress = 0
+    cached.loadedCount = 0
+    cached.totalCount = floors.length
 
     const textureLoader = new TextureLoader()
 
@@ -75,31 +95,39 @@ export function useBuildingSceneCache() {
       img: string,
       yPos: number,
     ): Promise<{ width: number; depth: number }> => {
-      return new Promise((resolve) => {
-        textureLoader.load(img, (texture) => {
-          const imgHeight = texture.image.height
-          const imgWidth = texture.image.width
-          const imgAspect = imgWidth / imgHeight
+      return new Promise((resolve, reject) => {
+        textureLoader.load(
+          img,
+          (texture) => {
+            const imgHeight = texture.image.height
+            const imgWidth = texture.image.width
+            const imgAspect = imgWidth / imgHeight
 
-          const planeWidth = baseScale
-          const planeDepth = baseScale / imgAspect
+            const planeWidth = baseScale
+            const planeDepth = baseScale / imgAspect
 
-          const geometry = new PlaneGeometry(planeWidth, planeDepth)
-          const material = new MeshBasicMaterial({
-            map: texture,
-            side: DoubleSide,
-            transparent: true,
-          })
+            const geometry = new PlaneGeometry(planeWidth, planeDepth)
+            const material = new MeshBasicMaterial({
+              map: texture,
+              side: DoubleSide,
+              transparent: true,
+            })
 
-          const plane = new Mesh(geometry, material)
-          plane.rotation.x = -Math.PI / 2
-          plane.position.y = yPos
+            const plane = new Mesh(geometry, material)
+            plane.rotation.x = -Math.PI / 2
+            plane.position.y = yPos
 
-          cached.scene.add(plane)
-          cached.floorLayers.push(plane)
+            cached.scene.add(plane)
+            cached.floorLayers.push(plane)
 
-          resolve({ width: planeWidth, depth: planeDepth })
-        })
+            resolve({ width: planeWidth, depth: planeDepth })
+          },
+          undefined,
+          (error) => {
+            console.error(`Failed to load texture: ${img}`, error)
+            reject(error)
+          },
+        )
       })
     }
 
@@ -138,16 +166,50 @@ export function useBuildingSceneCache() {
       cached.floorAreas.push(box)
     }
 
-    for (let idx = 0; idx < floors.length; idx++) {
-      const floor = floors[idx]
-      if (!floor) continue
+    // Load floors in parallel batches to avoid blocking main thread
+    const BATCH_SIZE = 2 // Load 2 floors concurrently
 
-      const yPos = idx * FLOOR_HEIGHT
+    for (let batchStart = 0; batchStart < floors.length; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, floors.length)
+      const batch = floors.slice(batchStart, batchEnd)
 
-      const { width, depth } = await insertFloorLayer(floor.blueprint_url, yPos)
-      insertFloorArea(floor, yPos, width, depth, FLOOR_HEIGHT)
+      // Load batch in parallel
+      const batchResults = await Promise.all(
+        batch.map(async (floor, batchIdx) => {
+          if (!floor) return null
 
-      cached.progress = ((idx + 1) / floors.length) * 100
+          const idx = batchStart + batchIdx
+          const yPos = idx * FLOOR_HEIGHT
+
+          try {
+            // Use cached blueprint URL
+            const blueprintUrl = await getBlueprintBlobUrl(floor.id, floor.blueprint_url)
+
+            const { width, depth } = await insertFloorLayer(blueprintUrl, yPos)
+            insertFloorArea(floor, yPos, width, depth, FLOOR_HEIGHT)
+
+            return { success: true, floor }
+          } catch (error) {
+            console.warn(`Failed to load floor ${floor.name}:`, error)
+            return { success: false, floor }
+          }
+        }),
+      )
+
+      // Update progress after each batch
+      const successCount = batchResults.filter((r) => r?.success).length
+      cached.loadedCount += batch.length
+      cached.progress = (cached.loadedCount / floors.length) * 100
+
+      // Report progress
+      batchResults.forEach((result) => {
+        if (result?.floor) {
+          onProgress?.(cached.loadedCount, floors.length, result.floor.name)
+        }
+      })
+
+      // Small delay to allow UI updates
+      await new Promise((resolve) => setTimeout(resolve, 0))
     }
 
     cached.isLoading = false
@@ -204,6 +266,8 @@ export function useBuildingSceneCache() {
     hasScene,
     isLoading,
     getProgress,
+    getLoadedCount,
+    getTotalCount,
     loadFloorsToScene,
     disposeScene,
     clearCache,
