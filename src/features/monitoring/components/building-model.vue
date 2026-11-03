@@ -3,12 +3,15 @@ import type { Floor } from '@/types/entity.type'
 import { onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 import { useBuildingRenderer } from '../composables/building/renderer'
 import { useBuildingScene } from '../composables/building/scene'
+import { useBuildingStore } from '../stores/building.store'
 
 type Props = {
   buildingId: string
   floors: Floor[]
 }
 const props = defineProps<Props>()
+
+const buildingStore = useBuildingStore()
 
 const canvasContainer = useTemplateRef<HTMLDivElement>('canvas-container')
 
@@ -49,7 +52,7 @@ const loadAndAttachScene = async (buildingId: string, floors: Floor[]) => {
     return
   }
 
-  await loadFloorsToScene(buildingId, floors, 40, '#62748e', (loaded, total) => {
+  await loadFloorsToScene(buildingId, floors, 40, (loaded, total) => {
     loadingProgress.value = (loaded / total) * 100
   })
 

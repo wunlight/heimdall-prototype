@@ -1,5 +1,5 @@
 import { getDevicesByFloorId } from '@/db/operations'
-import type { Device, Floor } from '@/types/entity.type'
+import type { Device, Floor, StatusType } from '@/types/entity.type'
 import {
   BoxGeometry,
   DoubleSide,
@@ -13,6 +13,7 @@ import {
   SphereGeometry,
   TextureLoader,
 } from 'three'
+import { useBuildingStore } from '../../stores/building.store'
 
 export interface CachedScene {
   scene: Scene
@@ -32,6 +33,8 @@ const FLOOR_HEIGHT = 10
 const sceneCache = new Map<string, CachedScene>()
 
 export function useBuildingScene() {
+  const buildingStore = useBuildingStore()
+
   const hasScene = (buildingId: string): boolean => {
     const cached = sceneCache.get(buildingId)
     return cached !== undefined && cached.floorLayers.length > 0
@@ -77,11 +80,16 @@ export function useBuildingScene() {
     return sceneCache.get(buildingId)!
   }
 
+  const resolveFloorColor = (status: StatusType): string => {
+    if (status === 'TROUBLE') return '#eab308'
+    if (status === 'ALARM') return '#ef4444'
+    return '#62748e'
+  }
+
   const loadFloorsToScene = async (
     buildingId: string,
     floors: Floor[],
     baseScale: number = 40,
-    initialColor: string = '#62748e',
     onProgress?: ProgressCallback,
   ): Promise<void> => {
     const cached = getOrCreateScene(buildingId)
@@ -136,6 +144,7 @@ export function useBuildingScene() {
       width: number,
       depth: number,
       height: number,
+      initialColor: string,
     ) => {
       const geometry = new BoxGeometry(width, height, depth)
       geometry.translate(0, height / 2, 0)
@@ -205,7 +214,14 @@ export function useBuildingScene() {
 
           try {
             const { width, depth } = await insertFloorLayer(floor.blueprint_url, yPos)
-            insertFloorArea(floor, yPos, width, depth, FLOOR_HEIGHT)
+            insertFloorArea(
+              floor,
+              yPos,
+              width,
+              depth,
+              FLOOR_HEIGHT,
+              resolveFloorColor(buildingStore.getFloorStatus(floor.id)),
+            )
 
             const devices = await getDevicesByFloorId(floor.id)
             devices.forEach((device) => {
