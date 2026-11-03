@@ -23,6 +23,7 @@ const {
 } = useBuildingSceneCache()
 
 let rendererController: ReturnType<typeof useBuildingRenderer> | null = null
+let currentBuildingId: string | null = null
 
 const isSceneLoading = ref(false)
 const loadingProgress = ref(0)
@@ -33,6 +34,7 @@ const attachCachedScene = (buildingId: string) => {
 
   const cached = getOrCreateScene(buildingId)
   rendererController.attachScene(cached.scene, cached.floorAreas)
+  currentBuildingId = buildingId
 }
 
 const loadAndAttachScene = async (buildingId: string, floors: Floor[]) => {
@@ -42,12 +44,14 @@ const loadAndAttachScene = async (buildingId: string, floors: Floor[]) => {
   loadingProgress.value = 0
   loadingStatus.value = 'Initializing...'
 
+  // If scene already cached, attach immediately
   if (hasScene(buildingId)) {
     attachCachedScene(buildingId)
     isSceneLoading.value = false
     return
   }
 
+  // If another loading is in progress, poll for progress
   if (isLoading(buildingId)) {
     const checkProgress = () => {
       const progress = getProgress(buildingId)
@@ -66,6 +70,7 @@ const loadAndAttachScene = async (buildingId: string, floors: Floor[]) => {
     return
   }
 
+  // Load new scene
   await loadFloorsToScene(buildingId, floors, 40, '#62748e', (loaded, total, floorName) => {
     loadingProgress.value = (loaded / total) * 100
     loadingStatus.value = `Loading ${floorName}... (${loaded}/${total})`
@@ -74,12 +79,15 @@ const loadAndAttachScene = async (buildingId: string, floors: Floor[]) => {
   isSceneLoading.value = false
 }
 
+// Handle building change without re-creating renderer
 watch(
   () => props.buildingId,
   async (newBuildingId, oldBuildingId) => {
     if (newBuildingId === oldBuildingId) return
 
+    // Detach current scene but keep renderer alive
     rendererController?.detachScene()
+    currentBuildingId = null
 
     if (newBuildingId && props.floors.length > 0) {
       await loadAndAttachScene(newBuildingId, props.floors)
@@ -88,6 +96,7 @@ watch(
   { immediate: false },
 )
 
+// Handle floors update
 watch(
   () => props.floors,
   async (newFloors) => {
@@ -98,9 +107,11 @@ watch(
   { immediate: false, deep: true },
 )
 
+// Initialize renderer once on mount
 onMounted(async () => {
   if (!buildingContainer.value) return
 
+  // Create WebGL renderer once
   rendererController = useBuildingRenderer(buildingContainer.value)
 
   if (props.buildingId && props.floors.length > 0) {
@@ -108,9 +119,11 @@ onMounted(async () => {
   }
 })
 
+// Cleanup on unmount
 onUnmounted(() => {
   rendererController?.dispose()
   rendererController = null
+  currentBuildingId = null
 })
 </script>
 

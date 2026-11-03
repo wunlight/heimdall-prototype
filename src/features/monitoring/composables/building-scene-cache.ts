@@ -166,6 +166,11 @@ export function useBuildingSceneCache() {
       cached.floorAreas.push(box)
     }
 
+    // Yield to main thread using requestAnimationFrame for better UI responsiveness
+    const yieldToMain = (): Promise<void> => {
+      return new Promise((resolve) => requestAnimationFrame(() => resolve()))
+    }
+
     // Load floors in parallel batches to avoid blocking main thread
     const BATCH_SIZE = 2 // Load 2 floors concurrently
 
@@ -197,7 +202,6 @@ export function useBuildingSceneCache() {
       )
 
       // Update progress after each batch
-      const successCount = batchResults.filter((r) => r?.success).length
       cached.loadedCount += batch.length
       cached.progress = (cached.loadedCount / floors.length) * 100
 
@@ -208,8 +212,8 @@ export function useBuildingSceneCache() {
         }
       })
 
-      // Small delay to allow UI updates
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      // Yield to main thread for UI updates
+      await yieldToMain()
     }
 
     cached.isLoading = false

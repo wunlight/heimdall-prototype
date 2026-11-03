@@ -1,6 +1,6 @@
 import type { Building, Floor } from '@/types/entity.type'
 import { defineStore } from 'pinia'
-import { getBlueprintBlobUrl } from '../services/blueprint-cache.service'
+import { getBlueprintBlobUrl, preloadBlueprintsIdle } from '../services/blueprint-cache.service'
 import { loadFloorsByBuildingId } from '../services/task.service'
 
 interface State {
@@ -61,12 +61,12 @@ export const useBuildingStore = defineStore('building', {
       return url
     },
 
-    async cacheBlueprintsForFloors(floors: Floor[]): Promise<void> {
-      await Promise.all(
-        floors
-          .filter((f) => f.blueprint_url)
-          .map((floor) => this.cacheBlueprintUrl(floor.id, floor.blueprint_url)),
-      )
+    /**
+     * Pre-cache blueprints in background during idle time
+     * Does not block the main thread
+     */
+    preloadBlueprintsInBackground(floors: Floor[]): void {
+      preloadBlueprintsIdle(floors)
     },
 
     async selectBuilding(building: Building) {
@@ -76,11 +76,13 @@ export const useBuildingStore = defineStore('building', {
       if (!this.cachedFloors.has(building.id)) {
         this.loadingBuildingIds.add(building.id)
         try {
+          // Load floors from database
           const floors = await loadFloorsByBuildingId(building.id)
           this.cachedFloors.set(building.id, floors)
 
-          // Pre-cache blueprint URLs for all floors
-          await this.cacheBlueprintsForFloors(floors)
+          // Pre-cache blueprints in background during idle time
+          // This prevents blocking the main thread
+          this.preloadBlueprintsInBackground(floors)
         } finally {
           this.loadingBuildingIds.delete(building.id)
         }

@@ -26,7 +26,6 @@ const currentFloors = computed(() => {
             <div class="absolute inset-0 z-0">
               <BuildingModel
                 v-if="buildingStore.selectedBuilding"
-                :key="buildingStore.selectedBuilding.id"
                 :building-id="buildingStore.selectedBuilding.id"
                 :floors="currentFloors"
               />
