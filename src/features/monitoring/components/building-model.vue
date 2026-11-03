@@ -12,7 +12,7 @@ const props = defineProps<Props>()
 
 const canvasContainer = useTemplateRef<HTMLDivElement>('canvas-container')
 
-const { getOrCreateScene, hasScene, isLoading, getProgress, loadFloorsToScene } = useBuildingScene()
+const { hasScene, isLoading, getOrCreateScene, loadFloorsToScene } = useBuildingScene()
 
 let rendererController: ReturnType<typeof useBuildingRenderer> | null = null
 
@@ -39,21 +39,20 @@ const loadAndAttachScene = async (buildingId: string, floors: Floor[]) => {
   }
 
   if (isLoading(buildingId)) {
-    const checkProgress = () => {
-      const progress = getProgress(buildingId)
-      loadingProgress.value = progress
-      if (isLoading(buildingId)) {
-        requestAnimationFrame(checkProgress)
-      } else {
+    const waitForLoad = setInterval(() => {
+      if (!isLoading(buildingId)) {
+        clearInterval(waitForLoad)
         attachCachedScene(buildingId)
         isSceneLoading.value = false
       }
-    }
-    checkProgress()
+    }, 100)
     return
   }
 
-  await loadFloorsToScene(buildingId, floors)
+  await loadFloorsToScene(buildingId, floors, 40, '#62748e', (loaded, total) => {
+    loadingProgress.value = (loaded / total) * 100
+  })
+
   attachCachedScene(buildingId)
   isSceneLoading.value = false
 }

@@ -18,7 +18,11 @@ export interface CachedScene {
   floorAreas: Mesh[]
   isLoading: boolean
   progress: number
+  loadedCount: number
+  totalCount: number
 }
+
+export type ProgressCallback = (loaded: number, total: number) => void
 
 const MAX_CACHE_SIZE = 5
 const FLOOR_HEIGHT = 10
@@ -41,6 +45,16 @@ export function useBuildingScene() {
     return cached?.progress ?? 0
   }
 
+  const getLoadedCount = (buildingId: string): number => {
+    const cached = sceneCache.get(buildingId)
+    return cached?.loadedCount ?? 0
+  }
+
+  const getTotalCount = (buildingId: string): number => {
+    const cached = sceneCache.get(buildingId)
+    return cached?.totalCount ?? 0
+  }
+
   const getOrCreateScene = (buildingId: string): CachedScene => {
     if (!sceneCache.has(buildingId)) {
       if (sceneCache.size >= MAX_CACHE_SIZE) {
@@ -54,6 +68,8 @@ export function useBuildingScene() {
         floorAreas: [],
         isLoading: false,
         progress: 0,
+        loadedCount: 0,
+        totalCount: 0,
       })
     }
     return sceneCache.get(buildingId)!
@@ -64,6 +80,7 @@ export function useBuildingScene() {
     floors: Floor[],
     baseScale: number = 40,
     initialColor: string = '#62748e',
+    onProgress?: ProgressCallback,
   ): Promise<void> => {
     const cached = getOrCreateScene(buildingId)
 
@@ -74,6 +91,8 @@ export function useBuildingScene() {
 
     cached.isLoading = true
     cached.progress = 0
+    cached.loadedCount = 0
+    cached.totalCount = floors.length
 
     const textureLoader = new TextureLoader()
 
@@ -144,16 +163,33 @@ export function useBuildingScene() {
       cached.floorAreas.push(box)
     }
 
-    for (let idx = 0; idx < floors.length; idx++) {
-      const floor = floors[idx]
-      if (!floor) continue
+    const BATCH_SIZE = 2
 
-      const yPos = idx * FLOOR_HEIGHT
+    for (let batchStart = 0; batchStart < floors.length; batchStart++) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, floors.length)
+      const batch = floors.slice(batchStart, batchEnd)
 
-      const { width, depth } = await insertFloorLayer(floor.blueprint_url, yPos)
-      insertFloorArea(floor, yPos, width, depth, FLOOR_HEIGHT)
+      await Promise.all(
+        batch.map(async (floor, batchIdx) => {
+          if (!floor) return
 
-      cached.progress = ((idx + 1) / floors.length) * 100
+          const idx = batchStart + batchIdx
+          const yPos = idx * FLOOR_HEIGHT
+
+          try {
+            const { width, depth } = await insertFloorLayer(floor.blueprint_url, yPos)
+            insertFloorArea(floor, yPos, width, depth, FLOOR_HEIGHT)
+
+            cached.loadedCount++
+            cached.progress = (cached.loadedCount / floors.length) * 100
+
+            onProgress?.(cached.loadedCount, floors.length)
+          } catch (e) {
+            console.warn(`Failed to load floor ${floor.name}:`, e)
+            cached.loadedCount++
+          }
+        }),
+      )
     }
 
     cached.isLoading = false
@@ -206,10 +242,12 @@ export function useBuildingScene() {
   }
 
   return {
-    getOrCreateScene,
     hasScene,
     isLoading,
     getProgress,
+    getLoadedCount,
+    getTotalCount,
+    getOrCreateScene,
     loadFloorsToScene,
     disposeScene,
     clearCache,
