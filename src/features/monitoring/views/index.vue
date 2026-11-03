@@ -20,10 +20,15 @@ const currentDevices = computed(() => {
   if (!buildingStore.selectedFloor) return []
   return buildingStore.getDevicesByFloorId(buildingStore.selectedFloor.id)
 })
+
+const currentBuildingStatus = computed(() => {
+  if (!buildingStore.selectedBuilding) return 'NORMAL'
+  return buildingStore.getBuildingStatus(buildingStore.selectedBuilding.id)
+})
 </script>
 
 <template>
-  <MonitoringLayout>
+  <MonitoringLayout :building-status="currentBuildingStatus">
     <template #default="{ isLoading }">
       <template v-if="!isLoading">
         <div v-if="buildingStore.selectedBuilding" class="relative isolate z-0 size-full">

@@ -1,4 +1,4 @@
-import type { Building, Device, Floor } from '@/types/entity.type'
+import type { Building, Device, Floor, StatusType } from '@/types/entity.type'
 import { defineStore } from 'pinia'
 import { loadFloorsByBuildingId } from '../services/task.service'
 
@@ -46,6 +46,50 @@ export const useBuildingStore = defineStore('building', {
       (floorId: string): boolean => {
         const devices = state.cachedDevices.get(floorId)
         return devices !== undefined && devices.length > 0
+      },
+
+    getFloorStatus:
+      (state) =>
+      (floorId: string): StatusType => {
+        const devices = state.cachedDevices.get(floorId) ?? []
+        if (devices.length === 0) return 'NORMAL'
+
+        let status: StatusType = 'NORMAL'
+
+        for (const device of devices) {
+          if (device.status === 'ALARM') {
+            return 'ALARM'
+          }
+          if (device.status === 'TROUBLE') {
+            status = 'TROUBLE'
+          }
+        }
+
+        return status
+      },
+
+    getBuildingStatus:
+      (state) =>
+      (buildingId: string): StatusType => {
+        const floors = state.cachedFloors.get(buildingId) ?? []
+        if (floors.length === 0) return 'NORMAL'
+
+        let buildingStatus: StatusType = 'NORMAL'
+
+        for (const floor of floors) {
+          const devices = state.cachedDevices.get(floor.id) ?? []
+
+          for (const device of devices) {
+            if (device.status === 'ALARM') {
+              return 'ALARM'
+            }
+            if (device.status === 'TROUBLE') {
+              buildingStatus = 'TROUBLE'
+            }
+          }
+        }
+
+        return buildingStatus
       },
   },
 

@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import type { StatusType } from '@/types/entity.type'
 import { computed } from 'vue'
 
 type Props = {
-  state?: 'ALARM' | 'TROUBLE' | 'NORMAL'
+  state?: StatusType
 }
 
 const props = withDefaults(defineProps<Props>(), {
