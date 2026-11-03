@@ -1,4 +1,5 @@
-import type { Floor } from '@/types/entity.type'
+import { getDevicesByFloorId } from '@/db/operations'
+import type { Device, Floor } from '@/types/entity.type'
 import {
   BoxGeometry,
   DoubleSide,
@@ -9,6 +10,7 @@ import {
   MeshBasicMaterial,
   PlaneGeometry,
   Scene,
+  SphereGeometry,
   TextureLoader,
 } from 'three'
 
@@ -163,6 +165,31 @@ export function useBuildingScene() {
       cached.floorAreas.push(box)
     }
 
+    const insertDeviceMarker = (
+      device: Device,
+      yPos: number,
+      planeWidth: number,
+      planeDepth: number,
+    ) => {
+      const markerX = (device.x - 0.5) * planeWidth
+      const markerZ = (device.y - 0.5) * planeDepth
+
+      const geometry = new SphereGeometry(0.8, 16, 16)
+
+      let color = '#22c55e'
+      if (device.status === 'TROUBLE') color = '#eab308'
+      if (device.status === 'ALARM') color = '#ef4444'
+
+      const material = new MeshBasicMaterial({ color })
+      const markerMesh = new Mesh(geometry, material)
+
+      markerMesh.position.set(markerX, yPos + 0.5, markerZ)
+
+      markerMesh.userData = { type: 'device', device }
+
+      cached.scene.add(markerMesh)
+    }
+
     const BATCH_SIZE = 2
 
     for (let batchStart = 0; batchStart < floors.length; batchStart++) {
@@ -179,6 +206,11 @@ export function useBuildingScene() {
           try {
             const { width, depth } = await insertFloorLayer(floor.blueprint_url, yPos)
             insertFloorArea(floor, yPos, width, depth, FLOOR_HEIGHT)
+
+            const devices = await getDevicesByFloorId(floor.id)
+            devices.forEach((device) => {
+              insertDeviceMarker(device, yPos, width, depth)
+            })
 
             cached.loadedCount++
             cached.progress = (cached.loadedCount / floors.length) * 100
