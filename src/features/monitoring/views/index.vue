@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import BuildingList from '../components/building-list.vue'
 import BuildingModel from '../components/building-model.vue'
+import EventSimulationDialog from '../components/event-simulation-dialog.vue'
 import FloorList from '../components/floor-list.vue'
 import ImageOverlayMap from '../components/image-overlay-map.vue'
 import MonitoringLayout from '../layouts/monitoring-layout.vue'
@@ -90,6 +91,19 @@ const currentBuildingStatus = computed(() => {
               @click="viewMode = '2D'"
             />
           </div>
+        </div>
+
+        <div class="absolute right-2 bottom-2 z-1">
+          <EventSimulationDialog>
+            <template #trigger="{ show }">
+              <Button
+                icon="icon-[tabler--test-pipe]"
+                severity="contrast"
+                class="pointer-events-auto"
+                @click="show"
+              />
+            </template>
+          </EventSimulationDialog>
         </div>
       </template>
     </template>
