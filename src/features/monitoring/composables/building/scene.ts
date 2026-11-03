@@ -20,24 +20,12 @@ export interface CachedScene {
   progress: number
 }
 
+const MAX_CACHE_SIZE = 5
 const FLOOR_HEIGHT = 10
 
 const sceneCache = new Map<string, CachedScene>()
 
-export function useBuildingSceneCache() {
-  const getOrCreateScene = (buildingId: string): CachedScene => {
-    if (!sceneCache.has(buildingId)) {
-      sceneCache.set(buildingId, {
-        scene: new Scene(),
-        floorLayers: [],
-        floorAreas: [],
-        isLoading: false,
-        progress: 0,
-      })
-    }
-    return sceneCache.get(buildingId)!
-  }
-
+export function useBuildingScene() {
   const hasScene = (buildingId: string): boolean => {
     const cached = sceneCache.get(buildingId)
     return cached !== undefined && cached.floorLayers.length > 0
@@ -51,6 +39,24 @@ export function useBuildingSceneCache() {
   const getProgress = (buildingId: string): number => {
     const cached = sceneCache.get(buildingId)
     return cached?.progress ?? 0
+  }
+
+  const getOrCreateScene = (buildingId: string): CachedScene => {
+    if (!sceneCache.has(buildingId)) {
+      if (sceneCache.size >= MAX_CACHE_SIZE) {
+        const oldestKey = sceneCache.keys().next().value
+        if (oldestKey) disposeScene(oldestKey)
+      }
+
+      sceneCache.set(buildingId, {
+        scene: new Scene(),
+        floorLayers: [],
+        floorAreas: [],
+        isLoading: false,
+        progress: 0,
+      })
+    }
+    return sceneCache.get(buildingId)!
   }
 
   const loadFloorsToScene = async (

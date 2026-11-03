@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Floor } from '@/types/entity.type'
 import { onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
-import { useBuildingRenderer } from '../composables/building-renderer'
-import { useBuildingSceneCache } from '../composables/building-scene-cache'
+import { useBuildingRenderer } from '../composables/building/renderer'
+import { useBuildingScene } from '../composables/building/scene'
 
 type Props = {
   buildingId: string
@@ -10,10 +10,9 @@ type Props = {
 }
 const props = defineProps<Props>()
 
-const buildingContainer = useTemplateRef<HTMLDivElement>('building-container')
+const canvasContainer = useTemplateRef<HTMLDivElement>('canvas-container')
 
-const { getOrCreateScene, hasScene, isLoading, getProgress, loadFloorsToScene } =
-  useBuildingSceneCache()
+const { getOrCreateScene, hasScene, isLoading, getProgress, loadFloorsToScene } = useBuildingScene()
 
 let rendererController: ReturnType<typeof useBuildingRenderer> | null = null
 
@@ -33,16 +32,13 @@ const loadAndAttachScene = async (buildingId: string, floors: Floor[]) => {
   isSceneLoading.value = true
   loadingProgress.value = 0
 
-  // Check if already has scene
   if (hasScene(buildingId)) {
     attachCachedScene(buildingId)
     isSceneLoading.value = false
     return
   }
 
-  // Check if loading in progress
   if (isLoading(buildingId)) {
-    // Wait for loading to complete
     const checkProgress = () => {
       const progress = getProgress(buildingId)
       loadingProgress.value = progress
@@ -57,21 +53,33 @@ const loadAndAttachScene = async (buildingId: string, floors: Floor[]) => {
     return
   }
 
-  // Load new scene
   await loadFloorsToScene(buildingId, floors)
   attachCachedScene(buildingId)
   isSceneLoading.value = false
 }
+
+onMounted(async () => {
+  if (!canvasContainer.value) return
+
+  rendererController = useBuildingRenderer(canvasContainer.value)
+
+  if (props.buildingId && props.floors.length > 0) {
+    await loadAndAttachScene(props.buildingId, props.floors)
+  }
+})
+
+onUnmounted(() => {
+  rendererController?.dispose()
+  rendererController = null
+})
 
 watch(
   () => props.buildingId,
   async (newBuildingId, oldBuildingId) => {
     if (newBuildingId === oldBuildingId) return
 
-    // Detach old scene from renderer
     rendererController?.detachScene()
 
-    // Load and attach new scene
     if (newBuildingId && props.floors.length > 0) {
       await loadAndAttachScene(newBuildingId, props.floors)
     }
@@ -88,28 +96,11 @@ watch(
   },
   { immediate: false, deep: true },
 )
-
-onMounted(async () => {
-  if (!buildingContainer.value) return
-
-  rendererController = useBuildingRenderer(buildingContainer.value)
-
-  // Load scene for current building if we have data
-  if (props.buildingId && props.floors.length > 0) {
-    await loadAndAttachScene(props.buildingId, props.floors)
-  }
-})
-
-onUnmounted(() => {
-  rendererController?.dispose()
-  rendererController = null
-  // Scene tetap di cache!
-})
 </script>
 
 <template>
   <div class="relative size-full pointer-events-auto">
-    <div ref="building-container" class="size-full" />
+    <div ref="canvas-container" class="size-full" />
 
     <div
       v-if="isSceneLoading"

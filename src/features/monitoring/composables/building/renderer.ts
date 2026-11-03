@@ -139,6 +139,7 @@ export function useBuildingRenderer(container: HTMLDivElement): BuildingRenderer
   }
 
   const attachScene = (scene: Scene, floorAreas: Mesh[]) => {
+    hoveredMesh = null
     currentScene = scene
     currentFloorAreas = floorAreas
 
@@ -148,32 +149,27 @@ export function useBuildingRenderer(container: HTMLDivElement): BuildingRenderer
   }
 
   const detachScene = () => {
+    hoveredMesh = null
     currentScene = null
     currentFloorAreas = []
-    // Keep animation running but scene is null (renders nothing)
   }
 
   const dispose = () => {
-    // Stop animation
     if (animationFrame !== null) {
       cancelAnimationFrame(animationFrame)
       animationFrame = null
     }
 
-    // Remove event listeners
     renderer.domElement.removeEventListener('wheel', onScroll)
     renderer.domElement.removeEventListener('pointermove', onPointerMove)
 
-    // Dispose controls and renderer
     controls.dispose()
     renderer.dispose()
 
-    // Remove canvas from DOM
     if (renderer.domElement.parentNode) {
       renderer.domElement.parentNode.removeChild(renderer.domElement)
     }
 
-    // Clear references
     currentScene = null
     currentFloorAreas = []
     clickCallback = null
