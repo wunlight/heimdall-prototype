@@ -1,4 +1,10 @@
-import type { BlueprintCache, Building, Device, Event, Floor } from '@/types/entity.type'
+import type {
+  BlueprintCache,
+  Building,
+  Device,
+  Event,
+  Floor,
+} from '@/features/monitoring/types/entity.type'
 import { Dexie, type Table } from 'dexie'
 
 export class HeimdallDB extends Dexie {

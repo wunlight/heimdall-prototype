@@ -1,4 +1,4 @@
-import type { Event } from '@/types/entity.type'
+import type { Event } from '@/features/monitoring/types/entity.type'
 import { ref } from 'vue'
 
 export function useReplayEngine(

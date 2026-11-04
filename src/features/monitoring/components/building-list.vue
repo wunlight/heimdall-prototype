@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Building } from '@/types/entity.type.ts'
+import type { Building } from '@/features/monitoring/types/entity.type'
 import { onMounted } from 'vue'
 
 type Props = {

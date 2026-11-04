@@ -5,7 +5,7 @@ import {
   getFloorsByBuildingId,
   seedDatabase,
 } from '@/db/operations'
-import type { Device, Floor } from '@/types/entity.type'
+import type { Device, Floor } from '@/features/monitoring/types/entity.type'
 import { generateMockData } from '@/utils/mock-data'
 import { useBuildingStore } from '../stores/building.store'
 

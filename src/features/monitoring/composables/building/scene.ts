@@ -1,5 +1,5 @@
 import { getDevicesByFloorId } from '@/db/operations'
-import type { Device, Floor, StatusType } from '@/types/entity.type'
+import type { Device, Floor, StatusType } from '@/features/monitoring/types/entity.type'
 import {
   BoxGeometry,
   DoubleSide,

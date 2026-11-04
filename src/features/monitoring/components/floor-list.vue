@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Floor } from '@/types/entity.type'
+import type { Floor } from '@/features/monitoring/types/entity.type'
 import { onMounted } from 'vue'
 
 type Props = {

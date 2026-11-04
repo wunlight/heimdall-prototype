@@ -1,4 +1,10 @@
-import type { Building, Device, Event, Floor, StatusType } from '@/types/entity.type'
+import type {
+  Building,
+  Device,
+  Event,
+  Floor,
+  StatusType,
+} from '@/features/monitoring/types/entity.type'
 
 export function generateMockData(numBuildings = 2, floorsPerBuilding = 3, devicesPerFloor = 4) {
   const buildings: Building[] = []

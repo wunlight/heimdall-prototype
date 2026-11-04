@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Device } from '@/types/entity.type'
+import type { Device } from '@/features/monitoring/types/entity.type'
 import { LImageOverlay, LMap, LMarker, LTooltip } from '@vue-leaflet/vue-leaflet'
 import { CRS, type LatLngBoundsExpression, type Map, type PointExpression } from 'leaflet'
 import { computed, onMounted, ref, watch } from 'vue'

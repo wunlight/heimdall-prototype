@@ -1,4 +1,4 @@
-import type { Building, Device, Floor, StatusType } from '@/types/entity.type'
+import type { Building, Device, Floor, StatusType } from '@/features/monitoring/types/entity.type'
 import { defineStore } from 'pinia'
 import { loadFloorsByBuildingId } from '../services/task.service'
 

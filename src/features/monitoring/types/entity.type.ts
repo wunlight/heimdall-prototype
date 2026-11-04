@@ -1,4 +1,6 @@
-export type StatusType = 'NORMAL' | 'TROUBLE' | 'ALARM'
+import type { STATUS_TYPES } from '../constants/status-type'
+
+export type StatusType = (typeof STATUS_TYPES)[number]
 
 export interface Building {
   id: string

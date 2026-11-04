@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { StatusType } from '@/types/entity.type.ts'
+import type { StatusType } from '@/features/monitoring/types/entity.type.ts'
 import { onMounted } from 'vue'
 import GridBackground from '../components/grid-background.vue'
 import { useAppSetup } from '../composables/app-setup.ts'

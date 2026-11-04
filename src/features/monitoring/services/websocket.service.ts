@@ -1,4 +1,4 @@
-import type { Device, Event, StatusType } from '@/types/entity.type'
+import type { Device, Event, StatusType } from '@/features/monitoring/types/entity.type'
 
 type Listener = (data: Event) => void
 

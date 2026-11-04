@@ -1,4 +1,4 @@
-import type { Floor } from '@/types/entity.type'
+import type { Floor } from '@/features/monitoring/types/entity.type'
 import type { Mesh, Scene } from 'three'
 import { PerspectiveCamera, Raycaster, Vector2, WebGLRenderer } from 'three'
 import { OrbitControls } from 'three/examples/jsm/Addons.js'
