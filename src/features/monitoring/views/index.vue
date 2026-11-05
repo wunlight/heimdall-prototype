@@ -2,9 +2,9 @@
 import { computed, ref } from 'vue'
 import BuildingList from '../components/building-list.vue'
 import BuildingModel from '../components/building-model.vue'
-import EventSimulationDialog from '../components/event-simulation-dialog.vue'
 import FloorList from '../components/floor-list.vue'
 import ImageOverlayMap from '../components/image-overlay-map.vue'
+import SimulationDialog from '../components/simulation/simulation-dialog.vue'
 import MonitoringLayout from '../layouts/monitoring-layout.vue'
 import { useBuildingStore } from '../stores/building.store.ts'
 
@@ -94,7 +94,7 @@ const currentBuildingStatus = computed(() => {
         </div>
 
         <div class="absolute right-2 bottom-2 z-1">
-          <EventSimulationDialog>
+          <SimulationDialog>
             <template #trigger="{ show }">
               <Button
                 icon="icon-[tabler--test-pipe]"
@@ -103,7 +103,7 @@ const currentBuildingStatus = computed(() => {
                 @click="show"
               />
             </template>
-          </EventSimulationDialog>
+          </SimulationDialog>
         </div>
       </template>
     </template>

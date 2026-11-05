@@ -32,8 +32,3 @@ export interface Event {
   type: StatusType
   created_at: string
 }
-
-export interface BlueprintCache {
-  floor_id: string
-  blob: Blob
-}

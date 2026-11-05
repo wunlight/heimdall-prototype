@@ -31,6 +31,7 @@ const stateConfig = computed(() => {
         pingSpeed: 'animate-ping animate-duration-[2s]',
       }
     case 'NORMAL':
+    default:
       return {
         glowBg: 'bg-blue-600/40',
         pingBg: 'bg-blue-500/20',
