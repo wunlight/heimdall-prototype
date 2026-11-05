@@ -5,4 +5,5 @@ export interface SimulationEventItem {
   deviceId: string | null
   eventId: string | null
   targetStatus: StatusType
+  delay: number
 }

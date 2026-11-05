@@ -44,6 +44,10 @@ export const bulkSaveFloors = async (floors: Floor[]): Promise<string> => {
 // FLOOR OPERATIONS
 
 // DEVICE OPERATIONS
+export const getDevices = async (): Promise<Device[]> => {
+  return await db.devices.toArray()
+}
+
 export const getDevicesByFloorId = async (floorId: string): Promise<Device[]> => {
   return await db.devices.where('floor_id').equals(floorId).toArray()
 }
@@ -91,47 +95,6 @@ export const bulkSaveEvents = async (events: Event[]): Promise<string> => {
   return await db.events.bulkPut(events)
 }
 // EVENT OPERATIONS
-
-// BLUEPRINT OPERATIONS
-export async function getCachedBlueprintUrl(floorId: string, publicUrl: string): Promise<string> {
-  try {
-    const cached = await db.blueprints.get(floorId)
-    if (cached) {
-      return URL.createObjectURL(cached.blob)
-    }
-
-    const res = await fetch(publicUrl)
-    if (!res.ok) throw new Error(`Gagal memuat blueprint dari ${publicUrl}`)
-
-    const blob = await res.blob()
-
-    await db.blueprints.put({
-      floor_id: floorId,
-      blob,
-    })
-
-    return URL.createObjectURL(blob)
-  } catch (e) {
-    console.warn(`Failed to cache blueprint for floor ${floorId}, fallback to public URL`, e)
-    return publicUrl
-  }
-}
-
-export async function saveBlueprintToCache(floorId: string, blob: Blob): Promise<void> {
-  await db.blueprints.put({
-    floor_id: floorId,
-    blob,
-  })
-}
-
-export async function removeBlueprintCache(floorId: string): Promise<void> {
-  await db.blueprints.delete(floorId)
-}
-
-export async function clearAllBlueprintsCache(): Promise<void> {
-  await db.blueprints.clear()
-}
-// BLUEPRINT OPERATIONS
 
 export const seedDatabase = async (initialData: {
   buildings: Building[]
