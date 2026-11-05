@@ -1,5 +1,10 @@
-import { getAllBuildings, getFloorsByBuildingId, seedDatabase } from '@/db/operations'
-import type { Floor } from '@/features/monitoring/types/entity.type'
+import {
+  getAllBuildings,
+  getDevicesByFloorId,
+  getFloorsByBuildingId,
+  seedDatabase,
+} from '@/db/operations'
+import type { Device, Floor } from '@/features/monitoring/types/entity.type'
 import { generateMockData } from '@/utils/mock-data'
 import { useBuildingStore } from '../stores/building.store'
 
@@ -55,6 +60,21 @@ export const preLoadBuildings = async (updateMsg: (msg: string) => void) => {
       store.setCachedFloors(building.id, floors)
     } else {
       floors = store.getFloorsByBuildingId(building.id)
+    }
+
+    if (floors && floors.length > 0) {
+      updateMsg(`Caching devices for building: ${building.name} (${i + 1}/${buildings.length})`)
+
+      for (const floor of floors) {
+        if (!store.hasCachedDevices(floor.id)) {
+          try {
+            const devices: Device[] = await getDevicesByFloorId(floor.id)
+            store.setCachedDevices(floor.id, devices)
+          } catch (e) {
+            console.warn(`Failed to preload devices for floor ID: ${floor.id}`, e)
+          }
+        }
+      }
     }
   }
 
