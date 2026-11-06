@@ -3,7 +3,6 @@ import type { Floor } from '@/features/monitoring/types/entity.type'
 import { onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 import { useBuildingRenderer } from '../composables/building/renderer'
 import { useBuildingScene } from '../composables/building/scene'
-import { useBuildingStore } from '../stores/building.store'
 
 type Props = {
   buildingId: string
@@ -11,20 +10,15 @@ type Props = {
 }
 const props = defineProps<Props>()
 
-const buildingStore = useBuildingStore()
-
 const canvasContainer = useTemplateRef<HTMLDivElement>('canvas-container')
 
 const { hasScene, isLoading, getOrCreateScene, loadFloorsToScene } = useBuildingScene()
-
 let rendererController: ReturnType<typeof useBuildingRenderer> | null = null
 
 const isSceneLoading = ref(false)
-const loadingProgress = ref(0)
 
 const attachCachedScene = (buildingId: string) => {
   if (!rendererController) return
-
   const cached = getOrCreateScene(buildingId)
   rendererController.attachScene(cached.scene, cached.floorAreas)
 }
@@ -33,7 +27,6 @@ const loadAndAttachScene = async (buildingId: string, floors: Floor[]) => {
   if (!rendererController || floors.length === 0) return
 
   isSceneLoading.value = true
-  loadingProgress.value = 0
 
   if (hasScene(buildingId)) {
     attachCachedScene(buildingId)
@@ -52,9 +45,7 @@ const loadAndAttachScene = async (buildingId: string, floors: Floor[]) => {
     return
   }
 
-  await loadFloorsToScene(buildingId, floors, 40, (loaded, total) => {
-    loadingProgress.value = (loaded / total) * 100
-  })
+  await loadFloorsToScene(buildingId, floors, 40)
 
   attachCachedScene(buildingId)
   isSceneLoading.value = false
@@ -101,15 +92,7 @@ watch(
 </script>
 
 <template>
-  <div class="relative size-full pointer-events-auto">
-    <div ref="canvas-container" class="size-full" />
-
-    <div
-      v-if="isSceneLoading"
-      class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 gap-2"
-    >
-      <p class="text-sm text-slate-300">Loading building model...</p>
-      <ProgressBar :value="loadingProgress" class="w-96 rounded-full!" />
-    </div>
+  <div class="relative size-full">
+    <div ref="canvas-container" class="size-full pointer-events-auto" />
   </div>
 </template>
