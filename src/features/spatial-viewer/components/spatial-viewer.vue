@@ -2,15 +2,14 @@
 import type { Building, Floor } from '@/shared/types/entity.type.ts'
 import { computed, onMounted, ref } from 'vue'
 import { useSpatialStore } from '../stores/spatial.store.ts'
+import type { SpatialViewMode } from '../types/spatial.type.ts'
 import AmbientBackground from './ambient-background.vue'
 import BuildingModel from './building-model.vue'
 import FloorPlan from './floor-plan.vue'
 
-type ViewMode = '3D' | '2D'
-
 const store = useSpatialStore()
 
-const viewMode = ref<ViewMode>('3D')
+const viewMode = ref<SpatialViewMode>('3D')
 const selectedBuilding = ref<Building | null>(null)
 const selectedFloor = ref<Floor | null>(null)
 
