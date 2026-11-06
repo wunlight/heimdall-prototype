@@ -1,4 +1,4 @@
-import type { Building, Device, Floor, StatusType } from '@/features/monitoring/types/entity.type'
+import type { Building, Device, Floor, StatusType } from '@/shared/types/entity.type'
 import { defineStore } from 'pinia'
 
 interface State {

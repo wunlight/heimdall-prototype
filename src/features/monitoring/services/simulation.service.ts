@@ -1,5 +1,5 @@
 import { getDevices } from '@/db/operations'
-import type { Device } from '../types/entity.type'
+import type { Device } from '../../../shared/types/entity.type'
 
 export interface DeviceOption {
   label: string

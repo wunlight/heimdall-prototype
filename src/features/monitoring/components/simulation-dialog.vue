@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { mockWS } from '../../services/mock-ws.service.ts'
-import type { DeviceOption } from '../../services/simulation.service.ts'
-import { simulationService } from '../../services/simulation.service.ts'
-import type { SimulationEventItem } from '../../types/event.type.ts'
+import { mockWS } from '../services/mock-ws.service.ts'
+import type { DeviceOption } from '../services/simulation.service.ts'
+import { simulationService } from '../services/simulation.service.ts'
+import type { SimulationEventItem } from '../types/event.type.ts'
 import SimulationItem from './simulation-item.vue'
 
 const isShow = ref<boolean>(false)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { StatusType } from '@/features/monitoring/types/entity.type'
+import type { StatusType } from '@/shared/types/entity.type'
 import { computed } from 'vue'
 
 type Props = {

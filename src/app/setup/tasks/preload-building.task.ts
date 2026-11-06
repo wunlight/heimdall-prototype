@@ -1,7 +1,7 @@
 import { getAllBuildings, getDevicesByFloorId } from '@/db/operations'
-import { loadFloorsByBuildingId } from '@/features/monitoring/services/task.service'
-import type { Device, Floor } from '@/features/monitoring/types/entity.type'
+import { loadFloorsByBuildingId } from '@/features/spatial-viewer/services/spatial.service'
 import { useSpatialStore } from '@/features/spatial-viewer/stores/spatial.store'
+import type { Device, Floor } from '@/shared/types/entity.type'
 
 export const preLoadBuildings = async (updateMsg: (msg: string) => void) => {
   updateMsg('Fetching buildings')

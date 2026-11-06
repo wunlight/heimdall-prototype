@@ -1,4 +1,4 @@
-import type { Building, Device, Event, Floor } from '@/features/monitoring/types/entity.type'
+import type { Building, Device, Event, Floor } from '@/shared/types/entity.type'
 import { Dexie, type Table } from 'dexie'
 
 export class HeimdallDB extends Dexie {

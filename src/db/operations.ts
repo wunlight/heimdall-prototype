@@ -1,10 +1,4 @@
-import type {
-  Building,
-  Device,
-  Event,
-  Floor,
-  StatusType,
-} from '@/features/monitoring/types/entity.type'
+import type { Building, Device, Event, Floor, StatusType } from '@/shared/types/entity.type'
 import { db } from './database'
 
 // BUILDING OPERATIONS

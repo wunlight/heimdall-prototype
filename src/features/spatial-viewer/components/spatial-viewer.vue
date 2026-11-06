@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Building, Floor } from '@/features/monitoring/types/entity.type.ts'
+import type { Building, Floor } from '@/shared/types/entity.type.ts'
 import { computed, onMounted, ref } from 'vue'
 import { useSpatialStore } from '../stores/spatial.store.ts'
 import AmbientBackground from './ambient-background.vue'

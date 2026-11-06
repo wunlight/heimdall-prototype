@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { STATUS_TYPES } from '../../constants/status-type'
-import type { DeviceOption } from '../../services/simulation.service'
-import type { SimulationEventItem } from '../../types/event.type'
+import { STATUS_TYPES } from '../../../shared/constants/status-type'
+import type { DeviceOption } from '../services/simulation.service'
+import type { SimulationEventItem } from '../types/event.type'
 
 type Props = {
   data: SimulationEventItem

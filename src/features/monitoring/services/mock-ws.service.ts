@@ -1,6 +1,6 @@
 import { db } from '@/db/database'
 import { addEventLog } from '@/db/operations'
-import type { Event } from '../types/entity.type'
+import type { Event } from '../../../shared/types/entity.type'
 import type { SimulationEventItem } from '../types/event.type'
 
 type EventListener = (data: Event) => void
