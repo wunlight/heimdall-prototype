@@ -4,7 +4,7 @@ import './main.css'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 
-import App from './App.vue'
+import App from './app/app.vue'
 import installPrimevue from './plugins/primevue/index.ts'
 import router from './router'
 
