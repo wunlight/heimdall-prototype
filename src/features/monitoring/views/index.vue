@@ -74,14 +74,13 @@ const testCommands: SpatialCommand[] = [
   },
 ]
 
-function executeTestQueue() {
+async function executeTestQueue() {
   const viewer = spatialViewerRef.value
   if (!viewer) return
   console.log('executing...')
 
   for (const command of testCommands) {
-    const accepted = viewer.executeSpatialCommand(command)
-
+    const accepted = await viewer.executeSpatialCommand(command)
     console.log(`[TEST QUEUE] ${command.id}:`, accepted ? 'ACCEPTED' : 'REJECTED')
   }
 }

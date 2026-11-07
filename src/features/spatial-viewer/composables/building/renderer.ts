@@ -35,7 +35,7 @@ export function useBuildingRenderer(container: HTMLDivElement): BuildingRenderer
   container.appendChild(renderer.domElement)
 
   const controls = new OrbitControls(camera, renderer.domElement)
-  controls.enableDamping = true
+  controls.enableDamping = false
   controls.enablePan = false
   controls.enableZoom = false
 

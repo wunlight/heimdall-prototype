@@ -65,9 +65,9 @@ const { enqueueCommand, clearQueue, getQueueState, setCommandExecutor } = useSpa
 
 setCommandExecutor(executeOrchestratedCommand)
 
-const executeSpatialCommand = (command: SpatialCommand): boolean => {
+const executeSpatialCommand = async (command: SpatialCommand): Promise<boolean> => {
   handleCommandContext(command)
-  return enqueueCommand(command)
+  return await enqueueCommand(command)
 }
 
 function handleCommandContext(command: SpatialCommand) {

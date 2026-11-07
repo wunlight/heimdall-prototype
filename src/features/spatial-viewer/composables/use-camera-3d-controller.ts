@@ -1,15 +1,12 @@
-import type { Camera3DPayload, Vector3 } from '../types/camera.type'
 import type { PerspectiveCamera } from 'three'
 import type { OrbitControls } from 'three/examples/jsm/Addons.js'
 import { ref } from 'vue'
+import type { Camera3DPayload, Vector3 } from '../types/camera.type'
 
-/**
- * Default values untuk Camera 3D
- */
 const DEFAULT_3D_VALUES = {
   target: { x: 0, y: 0, z: 0 },
-  azimuth: 0, // radians
-  elevation: Math.PI / 3, // 60 degrees
+  azimuth: 0,
+  elevation: Math.PI / 3,
   distance: 100,
   duration: 1000,
 }
@@ -35,9 +32,6 @@ export function useCamera3DController(
   const isAnimating = ref(false)
   let animationFrame: number | null = null
 
-  /**
-   * Get current camera state dari Three.js camera dan controls
-   */
   function readCurrentState(): Camera3DState {
     if (!camera || !controls) {
       return { ...currentState.value }
@@ -62,16 +56,11 @@ export function useCamera3DController(
     return state
   }
 
-  /**
-   * Apply state ke camera
-   */
   function applyState(state: Camera3DState) {
     if (!camera || !controls) return
 
-    // Set target
     controls.target.set(state.target.x, state.target.y, state.target.z)
 
-    // Calculate camera position dari spherical coordinates
     const x = state.distance * Math.sin(state.elevation) * Math.sin(state.azimuth)
     const y = state.distance * Math.cos(state.elevation)
     const z = state.distance * Math.sin(state.elevation) * Math.cos(state.azimuth)
@@ -82,9 +71,6 @@ export function useCamera3DController(
     currentState.value = { ...state }
   }
 
-  /**
-   * Smooth animation dari current state ke target state dengan abort support
-   */
   function animateToState(
     targetState: Camera3DState,
     duration: number,
@@ -120,7 +106,6 @@ export function useCamera3DController(
       signal.addEventListener('abort', onAbort, { once: true })
 
       const animate = (currentTime: number) => {
-        // Check if aborted
         if (signal.aborted) {
           animationFrame = null
           isAnimating.value = false
@@ -130,11 +115,9 @@ export function useCamera3DController(
         const elapsed = currentTime - startTime
         const progress = Math.min(elapsed / duration, 1)
 
-        // Easing function (ease-in-out)
         const eased =
           progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2
 
-        // Interpolate state
         const interpolatedState: Camera3DState = {
           target: {
             x: startState.target.x + (targetState.target.x - startState.target.x) * eased,
@@ -162,17 +145,12 @@ export function useCamera3DController(
     })
   }
 
-  /**
-   * Handle ABSOLUTE movement
-   * Nilai payload adalah kondisi kamera tujuan yang eksplisit
-   */
   async function executeAbsolute(payload: Camera3DPayload, signal: AbortSignal): Promise<void> {
     if (!camera || !controls) {
       console.warn('Camera or controls not available')
       return
     }
 
-    // Build target state dengan default values untuk nilai yang tidak diberikan
     const targetState: Camera3DState = {
       target: payload.target || { ...DEFAULT_3D_VALUES.target },
       azimuth: payload.azimuth !== undefined ? payload.azimuth : DEFAULT_3D_VALUES.azimuth,
@@ -185,20 +163,14 @@ export function useCamera3DController(
     await animateToState(targetState, duration, signal)
   }
 
-  /**
-   * Handle RELATIVE movement
-   * Nilai payload adalah perubahan terhadap kondisi kamera saat command dieksekusi
-   */
   async function executeRelative(payload: Camera3DPayload, signal: AbortSignal): Promise<void> {
     if (!camera || !controls) {
       console.warn('Camera or controls not available')
       return
     }
 
-    // CRITICAL: Baca kondisi kamera terbaru ketika command mulai dieksekusi
     const currentState = readCurrentState()
 
-    // Apply delta ke current state
     const targetState: Camera3DState = {
       target: payload.target
         ? {
@@ -226,9 +198,6 @@ export function useCamera3DController(
     await animateToState(targetState, duration, signal)
   }
 
-  /**
-   * Cancel current animation
-   */
   function cancelAnimation() {
     if (animationFrame !== null) {
       cancelAnimationFrame(animationFrame)
@@ -237,9 +206,6 @@ export function useCamera3DController(
     }
   }
 
-  /**
-   * Dispose controller
-   */
   function dispose() {
     cancelAnimation()
   }

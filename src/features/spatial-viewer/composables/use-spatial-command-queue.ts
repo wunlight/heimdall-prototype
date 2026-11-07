@@ -152,7 +152,7 @@ export function useSpatialCommandQueue() {
     return { start: segmentStart, end: segmentEnd }
   }
 
-  function enqueueCommand(command: SpatialCommand): boolean {
+  async function enqueueCommand(command: SpatialCommand): Promise<boolean> {
     if (!validateCommand(command)) {
       console.error('Invalid command:', command)
       return false
@@ -211,7 +211,7 @@ export function useSpatialCommandQueue() {
     console.log('Command enqueued:', command.id, command.type, command)
 
     if (!isProcessing.value) {
-      processQueue()
+      await processQueue()
     }
 
     return true
