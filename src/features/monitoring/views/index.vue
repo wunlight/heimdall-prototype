@@ -6,7 +6,6 @@ import { ref } from 'vue'
 const spatialViewerRef = ref<InstanceType<typeof SpatialViewer> | null>(null)
 
 const testCommands: SpatialCommand[] = [
-  // 1. 3D Absolute
   {
     id: 'test-3d-001',
     timestamp: Date.now(),
@@ -21,8 +20,6 @@ const testCommands: SpatialCommand[] = [
       duration: 1000,
     },
   },
-
-  // 2. 3D Relative
   {
     id: 'test-3d-002',
     timestamp: Date.now() + 1,
@@ -35,9 +32,6 @@ const testCommands: SpatialCommand[] = [
       duration: 1000,
     },
   },
-
-  // 3. 3D Absolute
-  // Tidak boleh menggantikan command pertama karena ada Relative di antaranya.
   {
     id: 'test-3d-003',
     timestamp: Date.now() + 2,
@@ -52,8 +46,6 @@ const testCommands: SpatialCommand[] = [
       duration: 1000,
     },
   },
-
-  // 4. Switch View
   {
     id: 'test-view-001',
     timestamp: Date.now() + 3,
@@ -65,8 +57,6 @@ const testCommands: SpatialCommand[] = [
       floorId: 'flr-2-3',
     },
   },
-
-  // 5. 2D Absolute
   {
     id: 'test-2d-001',
     timestamp: Date.now() + 4,
@@ -78,7 +68,7 @@ const testCommands: SpatialCommand[] = [
         lat: -6.2,
         lng: 106.8,
       },
-      zoom: 18,
+      zoom: 3,
       duration: 1000,
     },
   },

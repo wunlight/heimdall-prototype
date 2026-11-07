@@ -1,13 +1,10 @@
-import type { Camera2DPayload, GeoCoordinate } from '../types/camera.type'
 import type { Map } from 'leaflet'
 import { ref } from 'vue'
+import type { Camera2DPayload, GeoCoordinate } from '../types/camera.type'
 
-/**
- * Default values untuk Camera 2D
- */
 const DEFAULT_2D_VALUES = {
   center: { lat: 0, lng: 0 },
-  zoom: 15,
+  zoom: 0,
   duration: 1000,
 }
 
@@ -16,13 +13,7 @@ export interface Camera2DState {
   zoom: number
 }
 
-/**
- * Camera 2D Controller untuk Leaflet atau map library lainnya
- * NOTE: Ini adalah interface - implementasi aktual bergantung pada map library yang digunakan
- */
-export function useCamera2DController(
-  mapInstance: Map | null, // Leaflet Map instance atau map library lainnya
-) {
+export function useCamera2DController(mapInstance: Map | null) {
   const currentState = ref<Camera2DState>({
     center: { ...DEFAULT_2D_VALUES.center },
     zoom: DEFAULT_2D_VALUES.zoom,
@@ -31,19 +22,11 @@ export function useCamera2DController(
   const isAnimating = ref(false)
   let currentAbortController: AbortController | null = null
 
-  /**
-   * Get current camera state dari map instance
-   */
   function readCurrentState(): Camera2DState {
     if (!mapInstance) {
       return { ...currentState.value }
     }
 
-    // Untuk Leaflet:
-    // const center = mapInstance.getCenter()
-    // const zoom = mapInstance.getZoom()
-
-    // Placeholder - implement sesuai map library
     const state = {
       center: { ...currentState.value.center },
       zoom: currentState.value.zoom,
@@ -53,26 +36,20 @@ export function useCamera2DController(
     return state
   }
 
-  /**
-   * Apply state ke map
-   */
   function applyState(state: Camera2DState, duration: number = 0) {
     if (!mapInstance) return
 
-    // Untuk Leaflet:
-    // if (duration > 0) {
-    //   mapInstance.flyTo([state.center.lat, state.center.lng], state.zoom, { duration: duration / 1000 })
-    // } else {
-    //   mapInstance.setView([state.center.lat, state.center.lng], state.zoom)
-    // }
+    if (duration > 0) {
+      mapInstance.flyTo([state.center.lat, state.center.lng], state.zoom, {
+        duration: duration / 1000,
+      })
+    } else {
+      mapInstance.setView([state.center.lat, state.center.lng], state.zoom)
+    }
 
-    // Placeholder - implement sesuai map library
     currentState.value = { ...state }
   }
 
-  /**
-   * Smooth animation dari current state ke target state dengan abort support
-   */
   function animateToState(
     targetState: Camera2DState,
     duration: number,
@@ -90,30 +67,28 @@ export function useCamera2DController(
 
       isAnimating.value = true
 
-      // Untuk Leaflet dengan flyTo dan abort support:
-      // const onMoveEnd = () => {
-      //   if (!signal.aborted) {
-      //     isAnimating.value = false
-      //     currentState.value = { ...targetState }
-      //     signal.removeEventListener('abort', onAbort)
-      //     resolve()
-      //   }
-      // }
-      //
+      const onMoveEnd = () => {
+        if (!signal.aborted) {
+          isAnimating.value = false
+          currentState.value = { ...targetState }
+          signal.removeEventListener('abort', onAbort)
+          resolve()
+        }
+      }
+
       // const onAbort = () => {
       //   mapInstance.stop()
       //   mapInstance.off('moveend', onMoveEnd)
       //   isAnimating.value = false
       //   reject(new DOMException('Aborted', 'AbortError'))
       // }
-      //
-      // signal.addEventListener('abort', onAbort, { once: true })
-      // mapInstance.flyTo([targetState.center.lat, targetState.center.lng], targetState.zoom, {
-      //   duration: duration / 1000,
-      // })
-      // mapInstance.once('moveend', onMoveEnd)
 
-      // Placeholder - implement sesuai map library dengan abort support
+      // signal.addEventListener('abort', onAbort, { once: true })
+      mapInstance.flyTo([targetState.center.lat, targetState.center.lng], targetState.zoom, {
+        duration: duration / 1000,
+      })
+      mapInstance.once('moveend', onMoveEnd)
+
       const timeout = setTimeout(() => {
         if (!signal.aborted) {
           applyState(targetState, 0)
@@ -133,17 +108,12 @@ export function useCamera2DController(
     })
   }
 
-  /**
-   * Handle ABSOLUTE movement
-   * Nilai payload adalah kondisi kamera tujuan yang eksplisit
-   */
   async function executeAbsolute(payload: Camera2DPayload, signal: AbortSignal): Promise<void> {
     if (!mapInstance) {
       console.warn('Map instance not available')
       return
     }
 
-    // Build target state dengan default values untuk nilai yang tidak diberikan
     const targetState: Camera2DState = {
       center: payload.center || { ...DEFAULT_2D_VALUES.center },
       zoom: payload.zoom !== undefined ? payload.zoom : DEFAULT_2D_VALUES.zoom,
@@ -154,20 +124,14 @@ export function useCamera2DController(
     await animateToState(targetState, duration, signal)
   }
 
-  /**
-   * Handle RELATIVE movement
-   * Nilai payload adalah perubahan terhadap kondisi kamera saat command dieksekusi
-   */
   async function executeRelative(payload: Camera2DPayload, signal: AbortSignal): Promise<void> {
     if (!mapInstance) {
       console.warn('Map instance not available')
       return
     }
 
-    // CRITICAL: Baca kondisi kamera terbaru ketika command mulai dieksekusi
     const currentState = readCurrentState()
 
-    // Apply delta ke current state
     const targetState: Camera2DState = {
       center: payload.center
         ? {
@@ -183,14 +147,10 @@ export function useCamera2DController(
     await animateToState(targetState, duration, signal)
   }
 
-  /**
-   * Cancel current animation
-   */
   function cancelAnimation() {
     if (!mapInstance) return
 
-    // Untuk Leaflet:
-    // mapInstance.stop()
+    mapInstance.stop()
 
     if (currentAbortController) {
       currentAbortController.abort()
@@ -200,9 +160,6 @@ export function useCamera2DController(
     isAnimating.value = false
   }
 
-  /**
-   * Dispose controller
-   */
   function dispose() {
     cancelAnimation()
   }
