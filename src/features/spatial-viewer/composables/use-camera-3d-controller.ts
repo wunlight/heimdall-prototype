@@ -105,6 +105,18 @@ export function useCamera3DController(
 
       signal.addEventListener('abort', onAbort, { once: true })
 
+      function getShortestAngleDelta(from: number, to: number): number {
+        const TWO_PI = Math.PI * 2
+
+        return ((((to - from + Math.PI) % TWO_PI) + TWO_PI) % TWO_PI) - Math.PI
+      }
+
+      function normalizeAngle(angle: number): number {
+        const TWO_PI = Math.PI * 2
+
+        return ((angle % TWO_PI) + TWO_PI) % TWO_PI
+      }
+
       const animate = (currentTime: number) => {
         if (signal.aborted) {
           animationFrame = null
@@ -118,13 +130,15 @@ export function useCamera3DController(
         const eased =
           progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2
 
+        const azimuthDelta = getShortestAngleDelta(startState.azimuth, targetState.azimuth)
+
         const interpolatedState: Camera3DState = {
           target: {
             x: startState.target.x + (targetState.target.x - startState.target.x) * eased,
             y: startState.target.y + (targetState.target.y - startState.target.y) * eased,
             z: startState.target.z + (targetState.target.z - startState.target.z) * eased,
           },
-          azimuth: startState.azimuth + (targetState.azimuth - startState.azimuth) * eased,
+          azimuth: normalizeAngle(startState.azimuth + azimuthDelta * eased),
           elevation: startState.elevation + (targetState.elevation - startState.elevation) * eased,
           distance: startState.distance + (targetState.distance - startState.distance) * eased,
         }

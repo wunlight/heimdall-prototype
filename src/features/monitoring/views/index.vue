@@ -46,32 +46,32 @@ const testCommands: SpatialCommand[] = [
       duration: 1000,
     },
   },
-  {
-    id: 'test-view-001',
-    timestamp: Date.now() + 3,
-    source: 'SYSTEM',
-    type: 'SWITCH_VIEW',
-    target: '2D',
-    context: {
-      buildingId: 'bldg-2',
-      floorId: 'flr-2-3',
-    },
-  },
-  {
-    id: 'test-2d-001',
-    timestamp: Date.now() + 4,
-    source: 'SYSTEM',
-    type: 'CAMERA_2D',
-    movement: 'ABSOLUTE',
-    payload: {
-      center: {
-        lat: -6.2,
-        lng: 106.8,
-      },
-      zoom: 3,
-      duration: 1000,
-    },
-  },
+  // {
+  //   id: 'test-view-001',
+  //   timestamp: Date.now() + 3,
+  //   source: 'SYSTEM',
+  //   type: 'SWITCH_VIEW',
+  //   target: '2D',
+  //   context: {
+  //     buildingId: 'bldg-2',
+  //     floorId: 'flr-2-3',
+  //   },
+  // },
+  // {
+  //   id: 'test-2d-001',
+  //   timestamp: Date.now() + 4,
+  //   source: 'SYSTEM',
+  //   type: 'CAMERA_2D',
+  //   movement: 'ABSOLUTE',
+  //   payload: {
+  //     center: {
+  //       lat: -6.2,
+  //       lng: 106.8,
+  //     },
+  //     zoom: 3,
+  //     duration: 1000,
+  //   },
+  // },
 ]
 
 async function executeTestQueue() {
@@ -84,14 +84,6 @@ async function executeTestQueue() {
     console.log(`[TEST QUEUE] ${command.id}:`, accepted ? 'ACCEPTED' : 'REJECTED')
   }
 }
-
-function clearTestQueue() {
-  spatialViewerRef.value?.clearCommandQueue()
-}
-
-function inspectQueue() {
-  console.log('[QUEUE STATE]', spatialViewerRef.value?.getCommandQueueState())
-}
 </script>
 
 <template>
@@ -99,9 +91,7 @@ function inspectQueue() {
     <SpatialViewer ref="spatialViewerRef" class="relative z-0" />
 
     <div class="absolute right-4 bottom-4 z-50 flex gap-2 pointer-events-auto">
-      <Button label="TEST QUEUE" @click="executeTestQueue" />
-      <Button label="CLEAR" severity="danger" @click="clearTestQueue" />
-      <Button label="INSPECT" severity="secondary" @click="inspectQueue" />
+      <Button label="Test Camera" @click="executeTestQueue" />
     </div>
   </div>
 </template>
