@@ -1,14 +1,23 @@
 <script setup lang="ts">
 import type { Floor } from '@/shared/types/entity.type'
-import { onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useBuildingRenderer } from '../composables/building/renderer'
 import { useBuildingScene } from '../composables/building/scene'
+import { useCamera3DController } from '../composables/use-camera-3d-controller'
 
 type Props = {
   buildingId: string
   floors: Floor[]
 }
 const props = defineProps<Props>()
+
+type Emit = {
+  (event: 'controller-ready', controller: ReturnType<typeof useCamera3DController>): void
+  (event: 'controller-disposed'): void
+}
+const emit = defineEmits<Emit>()
+
+let camera3DController: ReturnType<typeof useCamera3DController> | null = null
 
 const canvasContainer = useTemplateRef<HTMLDivElement>('canvas-container')
 
@@ -55,15 +64,23 @@ onMounted(async () => {
   if (!canvasContainer.value) return
 
   rendererController = useBuildingRenderer(canvasContainer.value)
+  if (rendererController) {
+    camera3DController = useCamera3DController(
+      rendererController.camera,
+      rendererController.controls,
+    )
+    emit('controller-ready', camera3DController)
+  }
 
   if (props.buildingId && props.floors.length > 0) {
     await loadAndAttachScene(props.buildingId, props.floors)
   }
 })
 
-onUnmounted(() => {
-  rendererController?.dispose()
-  rendererController = null
+onBeforeUnmount(() => {
+  emit('controller-disposed')
+  camera3DController?.dispose()
+  camera3DController = null
 })
 
 watch(

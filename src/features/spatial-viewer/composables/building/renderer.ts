@@ -8,6 +8,8 @@ export interface BuildingRendererController {
   detachScene: () => void
   dispose: () => void
   onFloorClick: (cb: (floor: Floor) => void) => void
+  camera: PerspectiveCamera
+  controls: OrbitControls
 }
 
 export function useBuildingRenderer(container: HTMLDivElement): BuildingRendererController {
@@ -195,5 +197,7 @@ export function useBuildingRenderer(container: HTMLDivElement): BuildingRenderer
     detachScene,
     dispose,
     onFloorClick: setClickCallback,
+    camera,
+    controls,
   }
 }

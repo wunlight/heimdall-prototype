@@ -2,13 +2,22 @@
 import type { Device } from '@/shared/types/entity.type'
 import { LImageOverlay, LMap, LMarker, LTooltip } from '@vue-leaflet/vue-leaflet'
 import { CRS, Map, type LatLngBoundsExpression, type PointExpression } from 'leaflet'
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useCamera2DController } from '../composables/use-camera-2d-controller'
 
 type Props = {
   blueprintUrl: string
   devices: Device[]
 }
 const props = defineProps<Props>()
+
+type Emit = {
+  (event: 'controller-ready', controller: ReturnType<typeof useCamera2DController>): void
+  (event: 'controller-disposed'): void
+}
+const emit = defineEmits<Emit>()
+
+let camera2DController: ReturnType<typeof useCamera2DController> | null = null
 
 const mapInstance = ref<Map | null>(null)
 const crs = CRS.Simple
@@ -40,6 +49,8 @@ const deviceMarkers = computed(() => {
 
 const onMapReady = (instance: Map) => {
   mapInstance.value = instance
+  camera2DController = useCamera2DController(instance)
+  emit('controller-ready', camera2DController)
 }
 
 const onImageLoad = (event: any) => {
@@ -58,6 +69,12 @@ const onImageLoad = (event: any) => {
     }
   }
 }
+
+onBeforeUnmount(() => {
+  emit('controller-disposed')
+  camera2DController?.dispose()
+  camera2DController = null
+})
 
 watch(
   () => props.blueprintUrl,
