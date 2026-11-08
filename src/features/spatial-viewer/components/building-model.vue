@@ -3,7 +3,7 @@ import type { Floor } from '@/shared/types/entity.type'
 import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useBuildingRenderer } from '../composables/building/renderer'
 import { useBuildingScene } from '../composables/building/scene'
-import { useCamera3DController } from '../composables/use-camera-3d-controller'
+import { useCamera3DController } from '../composables/camera-control/3d-camera-controller'
 
 type Props = {
   buildingId: string

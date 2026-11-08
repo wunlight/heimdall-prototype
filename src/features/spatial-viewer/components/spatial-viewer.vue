@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Building, Floor } from '@/shared/types/entity.type.ts'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useCamera3DController } from '../composables/camera-control/3d-camera-controller.ts'
 import { useCamera2DController } from '../composables/use-camera-2d-controller.ts'
-import { useCamera3DController } from '../composables/use-camera-3d-controller.ts'
 import { useSpatialCommandQueue } from '../composables/use-spatial-command-queue.ts'
 import { useSpatialOrchestrator } from '../composables/use-spatial-orchestrator.ts'
 import { useSpatialStore } from '../stores/spatial.store.ts'
