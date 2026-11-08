@@ -46,32 +46,32 @@ const testCommands: SpatialCommand[] = [
       duration: 1000,
     },
   },
-  // {
-  //   id: 'test-view-001',
-  //   timestamp: Date.now() + 3,
-  //   source: 'SYSTEM',
-  //   type: 'SWITCH_VIEW',
-  //   target: '2D',
-  //   context: {
-  //     buildingId: 'bldg-2',
-  //     floorId: 'flr-2-3',
-  //   },
-  // },
-  // {
-  //   id: 'test-2d-001',
-  //   timestamp: Date.now() + 4,
-  //   source: 'SYSTEM',
-  //   type: 'CAMERA_2D',
-  //   movement: 'ABSOLUTE',
-  //   payload: {
-  //     center: {
-  //       lat: -6.2,
-  //       lng: 106.8,
-  //     },
-  //     zoom: 3,
-  //     duration: 1000,
-  //   },
-  // },
+  {
+    id: 'test-view-001',
+    timestamp: Date.now() + 3,
+    source: 'SYSTEM',
+    type: 'SWITCH_VIEW',
+    target: '2D',
+    context: {
+      buildingId: 'bldg-2',
+      floorId: 'flr-2-3',
+    },
+  },
+  {
+    id: 'test-2d-001',
+    timestamp: Date.now() + 4,
+    source: 'SYSTEM',
+    type: 'CAMERA_2D',
+    movement: 'ABSOLUTE',
+    payload: {
+      center: {
+        lat: -6.2,
+        lng: 106.8,
+      },
+      zoom: 3,
+      duration: 1000,
+    },
+  },
 ]
 
 async function executeTestQueue() {

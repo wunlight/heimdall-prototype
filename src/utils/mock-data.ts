@@ -14,7 +14,7 @@ export function generateMockData(numBuildings = 2, floorsPerBuilding = 3, device
     const bId = `bldg-${b}`
     buildings.push({
       id: bId,
-      name: `Gedung Utama ${String.fromCharCode(64 + b)}`,
+      name: `Central Building ${String.fromCharCode(64 + b)}`,
       lat: Number((baseLat + b * 0.002).toFixed(6)),
       lng: Number((baseLng + b * 0.002).toFixed(6)),
     })
@@ -24,7 +24,7 @@ export function generateMockData(numBuildings = 2, floorsPerBuilding = 3, device
       floors.push({
         id: fId,
         building_id: bId,
-        name: `Lantai ${f}`,
+        name: `Floor ${f}`,
         level: f - 1,
         blueprint_url: `bldg_${b}_flr_${f}.webp`,
       })
