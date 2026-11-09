@@ -1,15 +1,7 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/Addons.js'
 
-export interface BuildingRendererController {
-  camera: THREE.PerspectiveCamera
-  controls: OrbitControls
-  attachScene: (scene: THREE.Scene, floorAreas: THREE.Mesh[]) => void
-  detachScene: () => void
-  dispose: () => void
-}
-
-export function useBuildingRenderer(container: HTMLDivElement): BuildingRendererController {
+export function useBuildingRenderer(container: HTMLDivElement) {
   const canvasHeight = container.clientHeight
   const canvasWidth = container.clientWidth
 

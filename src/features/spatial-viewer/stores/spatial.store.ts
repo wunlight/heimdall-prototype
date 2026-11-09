@@ -34,6 +34,19 @@ export const useSpatialStore = defineStore('spatial', {
         return state.cachedDevices.get(floorId) ?? []
       },
 
+    getDevicesByBuildingId:
+      (state) =>
+      (buildingId: string): Map<string, Device[]> => {
+        const floors = state.cachedFloors.get(buildingId) ?? []
+
+        return new Map(
+          floors.map((floor) => [
+            String(floor.id),
+            state.cachedDevices.get(String(floor.id)) ?? [],
+          ]),
+        )
+      },
+
     hasCachedDevices:
       (state) =>
       (floorId: string): boolean => {

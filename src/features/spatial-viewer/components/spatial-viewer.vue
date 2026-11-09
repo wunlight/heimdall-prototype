@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Building, Floor } from '@/shared/types/entity.type.ts'
+import type { Building, Device, Floor } from '@/shared/types/entity.type.ts'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useCamera3DController } from '../composables/camera-control/3d-camera-controller.ts'
 import { useCamera2DController } from '../composables/use-camera-2d-controller.ts'
@@ -162,6 +162,11 @@ const currentDevices = computed(() => {
   return store.getDevicesByFloorId(selectedFloor.value.id)
 })
 
+const currentDevicesByFloor = computed(() => {
+  if (!selectedBuilding.value) return new Map<string, Device[]>()
+  return store.getDevicesByBuildingId(selectedBuilding.value.id)
+})
+
 const currentBuildingStatus = computed(() => {
   if (!selectedBuilding.value) return 'NORMAL'
   return store.getBuildingStatus(selectedBuilding.value.id)
@@ -222,6 +227,7 @@ onUnmounted(() => {
         <BuildingModel
           :building-id="selectedBuilding.id"
           :floors="currentFloors"
+          :devices-by-floor="currentDevicesByFloor"
           @controller-ready="registerCamera3DController"
           @controller-disposed="unregisterCamera3DController"
         />
