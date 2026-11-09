@@ -1,42 +1,51 @@
-# .
+# Heimdall Prototype
 
-This template should help get you started developing with Vue 3 in Vite.
+Heimdall is a spatial monitoring prototype designed to visualize fire incidents across multi-floor building layouts. It provides interactive 2D and 3D spatial views to represent building structures, floor plans, and device locations, with the goal of supporting real-time incident monitoring and event replay.
 
-## Recommended IDE Setup
+---
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## Technologies
 
-## Recommended Browser Setup
+- **Core:** Vue 3, TypeScript, Three.js, Leaflet.js
+- **UI & Styling:** PrimeVue, Tailwind CSS
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+---
 
-## Type Support for `.vue` Imports in TS
+## Features
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+### 1. Dual-View Spatial Visualization
 
-## Customize configuration
+- 3D View: Hierarchical building and floor visualization using Three.js.
+- 2D View: Floor plan visualization using Leaflet.js and image overlays.
+- Device Positioning: Represents spatial device locations within building layouts.
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+### 2. Programmatic Camera Control
 
-## Project Setup
+- Automated camera positioning based on predefined spatial targets.
+- Absolute camera movement to navigate between spatial coordinates and viewpoints.
+- Relative orbital movement to adjust camera orientation.
+- Configurable camera parameters, including azimuth, elevation, distance, and transition duration.
+- Camera control across both 3D spatial models and 2D floor plans.
 
-```sh
-pnpm install
-```
+### 3. Spatial Command Queue
 
-### Compile and Hot-Reload for Development
+- Structured commands for controlling spatial viewer behavior.
+- Support for camera movement and view transitions.
+- Absolute and relative movement handling for 3D camera commands.
+- Command execution through a centralized spatial viewer interface.
 
-```sh
-pnpm dev
-```
+## Work In Progress
 
-### Type-Check, Compile and Minify for Production
+The following components are currently under development:
+- WebSocket Integration: Connecting incoming event payloads to the spatial command execution system.
+- Event Simulation: Simulating fire incidents and sequential device activations.
+- Event Replay Engine: Replaying chronological incident timelines and visualizing device activation sequences.
+- Spatial Event Synchronization: Coordinating building, floor, and device context with incoming spatial commands.
 
-```sh
-pnpm build
-```
+## Live Demo
+
+https://heimdall-prototype.vercel.app/
+
+The prototype includes an interactive camera movement demonstration that can be triggered through the Run Camera Demo button.
+
+Note: Heimdall is currently a development prototype. Some interactions and automated workflows are still under development.
