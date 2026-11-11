@@ -88,7 +88,7 @@ export function useBuildingScene() {
 
           const plane = new THREE.Mesh(geometry, material)
           plane.rotation.x = -Math.PI / 2
-          plane.position.y = yPos
+          plane.position.y = yPos + 0.01
 
           cached.scene.add(plane)
           cached.floorPlanes.set(floorId, plane)
