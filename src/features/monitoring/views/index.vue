@@ -1,125 +1,104 @@
 <script setup lang="ts">
 import SpatialViewer from '@/features/spatial-viewer/components/spatial-viewer.vue'
-import type { SpatialCommand } from '@/features/spatial-viewer/types/spatial.type'
-import { ref } from 'vue'
+import type { SpatialViewMode } from '@/features/spatial-viewer/types/spatial.type'
+import type { Building, Floor } from '@/shared/types/entity.type'
+import { onMounted, ref } from 'vue'
+import { useSpatialCache } from '../stores/spatial.cache'
 
-const spatialViewerRef = ref<InstanceType<typeof SpatialViewer> | null>(null)
-const isRunning = ref(false)
+const store = useSpatialCache()
 
-function createDemoCommands(): SpatialCommand[] {
-  const timestamp = Date.now()
+const viewMode = ref<SpatialViewMode>('3D')
+const selectedBuilding = ref<Building | null>(null)
+const selectedFloor = ref<Floor | null>(null)
 
-  return [
-    {
-      id: 'demo-3d-initial-position',
-      timestamp,
-      source: 'SYSTEM',
-      type: 'CAMERA_3D',
-      movement: 'ABSOLUTE',
-      payload: {
-        target: { x: 0, y: 0, z: 0 },
-        azimuth: 45,
-        elevation: 30,
-        distance: 50,
-        duration: 1000,
-      },
-    },
-    {
-      id: 'demo-3d-relative-orbit',
-      timestamp: timestamp + 1,
-      source: 'SYSTEM',
-      type: 'CAMERA_3D',
-      movement: 'RELATIVE',
-      payload: {
-        azimuth: 30,
-        elevation: 10,
-        duration: 1000,
-      },
-    },
-    {
-      id: 'demo-3d-absolute-reposition',
-      timestamp: timestamp + 2,
-      source: 'SYSTEM',
-      type: 'CAMERA_3D',
-      movement: 'ABSOLUTE',
-      payload: {
-        target: { x: 10, y: 0, z: 10 },
-        azimuth: 90,
-        elevation: 45,
-        distance: 30,
-        duration: 1000,
-      },
-    },
-    {
-      id: 'demo-view-switch-to-2d',
-      timestamp: timestamp + 3,
-      source: 'SYSTEM',
-      type: 'SWITCH_VIEW',
-      target: '2D',
-      context: {
-        buildingId: 'bldg-2',
-        floorId: 'flr-2-3',
-      },
-    },
-    {
-      id: 'demo-2d-center-position',
-      timestamp: timestamp + 4,
-      source: 'SYSTEM',
-      type: 'CAMERA_2D',
-      movement: 'ABSOLUTE',
-      payload: {
-        center: {
-          lat: -6.2,
-          lng: 106.8,
-        },
-        zoom: 3,
-        duration: 1000,
-      },
-    },
-  ]
-}
+function selectBuilding(building: Building) {
+  selectedBuilding.value = building
 
-async function executeCameraDemo() {
-  const viewer = spatialViewerRef.value
-
-  if (!viewer || isRunning.value) return
-
-  isRunning.value = true
-
-  const commands = createDemoCommands()
-
-  console.group('[SPATIAL DEMO] Camera Movement')
-
-  try {
-    for (const command of commands) {
-      const accepted = await viewer.executeSpatialCommand(command)
-
-      console.info(`[${command.type}] ${command.id}:`, accepted ? 'ACCEPTED' : 'REJECTED')
-
-      if (!accepted) {
-        console.warn('Demo sequence interrupted.')
-        break
-      }
-    }
-  } catch (error) {
-    console.error('Camera demo execution failed:', error)
-  } finally {
-    isRunning.value = false
-    console.groupEnd()
+  const floors = store.getFloorsByBuildingId(building.id)
+  if (viewMode.value === '2D') {
+    selectedFloor.value = floors[0] ?? null
+  } else {
+    selectedFloor.value =
+      floors.find((floor) => floor.id === selectedFloor.value?.id) ?? floors[0] ?? null
   }
 }
+
+onMounted(() => {
+  if (store.buildings.length > 0) selectBuilding(store.buildings[0]!)
+})
 </script>
 
 <template>
   <div class="relative h-svh overflow-hidden pointer-events-none">
-    <SpatialViewer ref="spatialViewerRef" class="relative z-0" />
+    <SpatialViewer
+      ref="spatialViewerRef"
+      :buildings="store.buildings"
+      :floors="store.cachedFloors"
+      :devices="store.cachedDevices"
+      v-model:view-mode="viewMode"
+      v-model:selected-building="selectedBuilding"
+      v-model:selected-floor="selectedFloor"
+      class="relative z-0"
+    />
 
-    <div class="absolute right-4 bottom-4 z-50 flex gap-2 pointer-events-auto">
-      <Button
-        :label="isRunning ? 'Running Demo...' : 'Run Camera Demo'"
-        :disabled="isRunning"
-        @click="executeCameraDemo"
-      />
+    <div class="absolute left-3 top-3 z-1">
+      <div
+        class="flex flex-col gap-2 p-2 max-h-56 w-64 bg-surface-900 rounded-md overflow-y-auto pointer-events-auto"
+      >
+        <Button
+          v-for="item in store.buildings"
+          :key="item.id"
+          :label="item.name"
+          icon="icon-[tabler--building]"
+          :severity="selectedBuilding?.id === item.id ? 'contrast' : 'secondary'"
+          class="shrink-0 justify-start!"
+          @click="selectBuilding(item)"
+        />
+      </div>
+    </div>
+
+    <div class="absolute right-3 top-3 z-1">
+      <div class="flex gap-1 p-1 h-fit bg-surface-900 rounded-md pointer-events-auto">
+        <Button
+          label="3D"
+          icon="icon-[tabler--cube] text-base!"
+          severity="contrast"
+          size="small"
+          class="shrink-0!"
+          :text="viewMode !== '3D'"
+          @click="viewMode = '3D'"
+        />
+        <Button
+          label="2D"
+          icon="icon-[tabler--align-box-center-middle] text-base!"
+          severity="contrast"
+          size="small"
+          class="shrink-0!"
+          :text="viewMode !== '2D'"
+          @click="viewMode = '2D'"
+        />
+      </div>
+    </div>
+
+    <div class="absolute right-3 top-1/2 -translate-y-1/2 z-1">
+      <div
+        v-if="viewMode === '2D' && selectedBuilding"
+        class="group/floor-list flex flex-col gap-2 p-2 max-h-56 w-12 hover:w-48 bg-surface-900 rounded-md transform-all duration-200 hover:overflow-y-auto pointer-events-auto"
+      >
+        <Button
+          v-for="item in store.getFloorsByBuildingId(selectedBuilding.id)"
+          :key="item.id"
+          :label="item.name"
+          icon="icon-[tabler--layout-board]"
+          :severity="selectedFloor?.id === item.id ? 'contrast' : 'secondary'"
+          @click="selectedFloor = item"
+          :pt="{
+            root: 'shrink-0! flex! justify-start! py-0.5!',
+            label: 'hidden group-hover/floor-list:block',
+            icon: 'hidden group-hover/floor-list:block',
+          }"
+        />
+      </div>
     </div>
   </div>
 </template>

@@ -1,6 +1,6 @@
 import { getAllBuildings, getDevicesByFloorId } from '@/db/operations'
+import { useSpatialCache } from '@/features/monitoring/stores/spatial.cache'
 import { loadFloorsByBuildingId } from '@/features/spatial-viewer/services/spatial.service'
-import { useSpatialStore } from '@/features/spatial-viewer/stores/spatial.store'
 import type { Device, Floor } from '@/shared/types/entity.type'
 
 export const preLoadBuildings = async (updateMsg: (msg: string) => void) => {
@@ -8,7 +8,7 @@ export const preLoadBuildings = async (updateMsg: (msg: string) => void) => {
   const buildings = await getAllBuildings()
 
   updateMsg('Storing buildings')
-  const store = useSpatialStore()
+  const store = useSpatialCache()
   store.setBuildings(buildings)
 
   if (buildings.length === 0) {
