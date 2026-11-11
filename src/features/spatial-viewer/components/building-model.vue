@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Floor } from '@/shared/types/entity.type'
+import type { Device, Floor } from '@/shared/types/entity.type'
 import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useBuildingRenderer } from '../composables/building/renderer'
 import { useBuildingScene } from '../composables/building/scene'
@@ -8,6 +8,7 @@ import { useCamera3DController } from '../composables/camera-control/3d-camera-c
 type Props = {
   buildingId: string
   floors: Floor[]
+  devicesByFloor: Map<string, Device[]>
 }
 const props = defineProps<Props>()
 
@@ -21,7 +22,7 @@ let camera3DController: ReturnType<typeof useCamera3DController> | null = null
 
 const canvasContainer = useTemplateRef<HTMLDivElement>('canvas-container')
 
-const { hasScene, isLoading, getOrCreateScene, loadFloorsToScene } = useBuildingScene()
+const { hasScene, isLoading, getOrCreateScene, renderBuilding } = useBuildingScene()
 let rendererController: ReturnType<typeof useBuildingRenderer> | null = null
 
 const isSceneLoading = ref(false)
@@ -29,10 +30,14 @@ const isSceneLoading = ref(false)
 const attachCachedScene = (buildingId: string) => {
   if (!rendererController) return
   const cached = getOrCreateScene(buildingId)
-  rendererController.attachScene(cached.scene, cached.floorAreas)
+  rendererController.attachScene(cached.scene)
 }
 
-const loadAndAttachScene = async (buildingId: string, floors: Floor[]) => {
+const loadAndAttachScene = async (
+  buildingId: string,
+  floors: Floor[],
+  devicesByFloor: Map<string, Device[]>,
+) => {
   if (!rendererController || floors.length === 0) return
 
   isSceneLoading.value = true
@@ -54,7 +59,7 @@ const loadAndAttachScene = async (buildingId: string, floors: Floor[]) => {
     return
   }
 
-  await loadFloorsToScene(buildingId, floors, 40)
+  await renderBuilding(buildingId, floors, devicesByFloor, 40)
 
   attachCachedScene(buildingId)
   isSceneLoading.value = false
@@ -73,7 +78,7 @@ onMounted(async () => {
   }
 
   if (props.buildingId && props.floors.length > 0) {
-    await loadAndAttachScene(props.buildingId, props.floors)
+    await loadAndAttachScene(props.buildingId, props.floors, props.devicesByFloor)
   }
 })
 
@@ -91,7 +96,7 @@ watch(
     rendererController?.detachScene()
 
     if (newBuildingId && props.floors.length > 0) {
-      await loadAndAttachScene(newBuildingId, props.floors)
+      await loadAndAttachScene(newBuildingId, props.floors, props.devicesByFloor)
     }
   },
   { immediate: false },
@@ -101,7 +106,7 @@ watch(
   () => props.floors,
   async (newFloors) => {
     if (props.buildingId && newFloors.length > 0 && !hasScene(props.buildingId)) {
-      await loadAndAttachScene(props.buildingId, newFloors)
+      await loadAndAttachScene(props.buildingId, newFloors, props.devicesByFloor)
     }
   },
   { immediate: false, deep: true },

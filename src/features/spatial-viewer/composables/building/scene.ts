@@ -1,204 +1,173 @@
-import { getDevicesByFloorId } from '@/db/operations'
-import type { Device, Floor, StatusType } from '@/shared/types/entity.type'
-import {
-  BoxGeometry,
-  DoubleSide,
-  EdgesGeometry,
-  LineBasicMaterial,
-  LineSegments,
-  Mesh,
-  MeshBasicMaterial,
-  PlaneGeometry,
-  Scene,
-  SphereGeometry,
-  TextureLoader,
-} from 'three'
+import type { Device, Floor } from '@/shared/types/entity.type'
+import * as THREE from 'three'
 
-export interface CachedScene {
-  scene: Scene
-  floorLayers: Mesh[]
-  floorAreas: Mesh[]
+export interface BuildingScene {
+  scene: THREE.Scene
+  floorPlanes: Map<string, THREE.Mesh>
+  floorSpaces: Map<string, THREE.Mesh>
+  deviceMarkers: Map<string, Map<string, THREE.Mesh>>
   isLoading: boolean
-  progress: number
-  loadedCount: number
-  totalCount: number
 }
 
-export type ProgressCallback = (loaded: number, total: number) => void
+type FloorLayerSize = {
+  width: number
+  depth: number
+}
 
 const MAX_CACHE_SIZE = 5
-const FLOOR_HEIGHT = 10
+const FLOOR_HEIGHT = 16
 
-const sceneCache = new Map<string, CachedScene>()
+const buildingScenes = new Map<string, BuildingScene>()
 
 export function useBuildingScene() {
   const hasScene = (buildingId: string): boolean => {
-    const cached = sceneCache.get(buildingId)
-    return cached !== undefined && cached.floorLayers.length > 0
+    const cached = buildingScenes.get(buildingId)
+    return cached !== undefined && cached.floorPlanes.size > 0
   }
 
   const isLoading = (buildingId: string): boolean => {
-    const cached = sceneCache.get(buildingId)
+    const cached = buildingScenes.get(buildingId)
     return cached?.isLoading ?? false
   }
 
-  const getProgress = (buildingId: string): number => {
-    const cached = sceneCache.get(buildingId)
-    return cached?.progress ?? 0
-  }
-
-  const getLoadedCount = (buildingId: string): number => {
-    const cached = sceneCache.get(buildingId)
-    return cached?.loadedCount ?? 0
-  }
-
-  const getTotalCount = (buildingId: string): number => {
-    const cached = sceneCache.get(buildingId)
-    return cached?.totalCount ?? 0
-  }
-
-  const getOrCreateScene = (buildingId: string): CachedScene => {
-    if (!sceneCache.has(buildingId)) {
-      if (sceneCache.size >= MAX_CACHE_SIZE) {
-        const oldestKey = sceneCache.keys().next().value
-        if (oldestKey) disposeScene(oldestKey)
+  const getOrCreateScene = (buildingId: string): BuildingScene => {
+    if (!buildingScenes.has(buildingId)) {
+      if (buildingScenes.size >= MAX_CACHE_SIZE) {
+        const oldestKey = buildingScenes.keys().next().value
+        if (oldestKey) disposeBuilding(oldestKey)
       }
 
-      sceneCache.set(buildingId, {
-        scene: new Scene(),
-        floorLayers: [],
-        floorAreas: [],
+      buildingScenes.set(buildingId, {
+        scene: new THREE.Scene(),
+        floorPlanes: new Map(),
+        floorSpaces: new Map(),
+        deviceMarkers: new Map(),
         isLoading: false,
-        progress: 0,
-        loadedCount: 0,
-        totalCount: 0,
       })
     }
-    return sceneCache.get(buildingId)!
+    return buildingScenes.get(buildingId)!
   }
 
-  const resolveFloorColor = (status: StatusType): string => {
-    if (status === 'TROUBLE') return '#eab308'
-    if (status === 'ALARM') return '#ef4444'
-    return '#62748e'
-  }
-
-  const loadFloorsToScene = async (
+  const renderBuilding = async (
     buildingId: string,
     floors: Floor[],
+    devicesByFloor: Map<string, Device[]>,
     baseScale: number = 40,
-    onProgress?: ProgressCallback,
   ): Promise<void> => {
     const cached = getOrCreateScene(buildingId)
 
-    if (cached.floorLayers.length > 0) {
+    if (cached.floorPlanes.size > 0) {
       // Already loaded
       return
     }
 
     cached.isLoading = true
-    cached.progress = 0
-    cached.loadedCount = 0
-    cached.totalCount = floors.length
 
-    const textureLoader = new TextureLoader()
+    const textureLoader = new THREE.TextureLoader()
 
-    const insertFloorLayer = (
-      img: string,
+    const insertFloorPlane = (
+      floorId: string,
+      blueprint: string,
       yPos: number,
-    ): Promise<{ width: number; depth: number }> => {
+    ): Promise<FloorLayerSize> => {
       return new Promise((resolve) => {
-        textureLoader.load(img, (texture) => {
-          const imgHeight = texture.image.height
-          const imgWidth = texture.image.width
-          const imgAspect = imgWidth / imgHeight
+        textureLoader.load(blueprint, (texture) => {
+          const height = texture.image.height
+          const width = texture.image.width
+          const aspectRatio = width / height
 
           const planeWidth = baseScale
-          const planeDepth = baseScale / imgAspect
+          const planeDepth = baseScale / aspectRatio
 
-          const geometry = new PlaneGeometry(planeWidth, planeDepth)
-          const material = new MeshBasicMaterial({
+          const geometry = new THREE.PlaneGeometry(planeWidth, planeDepth)
+          const material = new THREE.MeshBasicMaterial({
             map: texture,
-            side: DoubleSide,
+            side: THREE.DoubleSide,
             transparent: true,
           })
 
-          const plane = new Mesh(geometry, material)
+          const plane = new THREE.Mesh(geometry, material)
           plane.rotation.x = -Math.PI / 2
-          plane.position.y = yPos
+          plane.position.y = yPos + 0.01
 
           cached.scene.add(plane)
-          cached.floorLayers.push(plane)
+          cached.floorPlanes.set(floorId, plane)
 
-          resolve({ width: planeWidth, depth: planeDepth })
+          resolve({
+            width: planeWidth,
+            depth: planeDepth,
+          })
         })
       })
     }
 
-    const insertFloorArea = (
-      floor: Floor,
+    const insertFloorSpace = (
       yPos: number,
       width: number,
       depth: number,
       height: number,
-      initialColor = '#62748e',
+      data: Floor,
     ) => {
-      const geometry = new BoxGeometry(width, height, depth)
+      const geometry = new THREE.BoxGeometry(width, height, depth)
       geometry.translate(0, height / 2, 0)
 
-      const material = new MeshBasicMaterial({
-        color: initialColor,
+      const material = new THREE.MeshBasicMaterial({
+        color: '#62748E',
         transparent: true,
         opacity: 0.3,
         wireframe: false,
       })
 
-      const box = new Mesh(geometry, material)
-      box.position.y = yPos
-      box.userData = { ...floor }
+      const space = new THREE.Mesh(geometry, material)
+      space.position.y = yPos
+      space.userData = { ...data }
 
-      const edges = new EdgesGeometry(geometry)
-      const line = new LineBasicMaterial({
-        color: initialColor,
-        linewidth: 2,
+      const edges = new THREE.EdgesGeometry(geometry)
+      const line = new THREE.LineBasicMaterial({
+        color: '#62748E',
+        linewidth: 3,
         transparent: true,
         opacity: 0.8,
       })
-      const edgeLines = new LineSegments(edges, line)
-      box.add(edgeLines)
+      const edgeLines = new THREE.LineSegments(edges, line)
 
-      cached.scene.add(box)
-      cached.floorAreas.push(box)
+      space.add(edgeLines)
+
+      cached.scene.add(space)
+      cached.floorSpaces.set(data.id, space)
     }
 
     const insertDeviceMarker = (
-      device: Device,
+      floorId: string,
       yPos: number,
       planeWidth: number,
       planeDepth: number,
+      data: Device,
     ) => {
-      const markerX = (device.x - 0.5) * planeWidth
-      const markerZ = (device.y - 0.5) * planeDepth
+      const markerX = (data.x - 0.5) * planeWidth
+      const markerZ = (data.y - 0.5) * planeDepth
 
-      const geometry = new SphereGeometry(0.8, 16, 16)
+      const geometry = new THREE.SphereGeometry(0.75, 16, 16)
 
-      let color = '#22c55e'
-      if (device.status === 'TROUBLE') color = '#eab308'
-      if (device.status === 'ALARM') color = '#ef4444'
+      const material = new THREE.MeshBasicMaterial({ color: '#2B7FFF' })
+      const marker = new THREE.Mesh(geometry, material)
 
-      const material = new MeshBasicMaterial({ color })
-      const markerMesh = new Mesh(geometry, material)
+      marker.position.set(markerX, yPos + 0.5, markerZ)
+      marker.userData = { ...data }
 
-      markerMesh.position.set(markerX, yPos + 0.5, markerZ)
+      cached.scene.add(marker)
 
-      markerMesh.userData = { type: 'device', device }
+      if (!cached.deviceMarkers.has(floorId)) {
+        cached.deviceMarkers.set(floorId, new Map())
+      }
 
-      cached.scene.add(markerMesh)
+      const floorDevices = cached.deviceMarkers.get(floorId)!
+      floorDevices.set(String(data.id), marker)
     }
 
     const BATCH_SIZE = 2
 
-    for (let batchStart = 0; batchStart < floors.length; batchStart++) {
+    for (let batchStart = 0; batchStart < floors.length; batchStart += BATCH_SIZE) {
       const batchEnd = Math.min(batchStart + BATCH_SIZE, floors.length)
       const batch = floors.slice(batchStart, batchEnd)
 
@@ -210,21 +179,15 @@ export function useBuildingScene() {
           const yPos = idx * FLOOR_HEIGHT
 
           try {
-            const { width, depth } = await insertFloorLayer(floor.blueprint_url, yPos)
-            insertFloorArea(floor, yPos, width, depth, FLOOR_HEIGHT)
+            const { width, depth } = await insertFloorPlane(floor.id, floor.blueprint_url, yPos)
+            insertFloorSpace(yPos, width, depth, FLOOR_HEIGHT, floor)
 
-            const devices = await getDevicesByFloorId(floor.id)
-            devices.forEach((device) => {
-              insertDeviceMarker(device, yPos, width, depth)
+            const floorDevices = devicesByFloor.get(floor.id) ?? []
+            floorDevices.forEach((device) => {
+              insertDeviceMarker(floor.id, yPos, width, depth, device)
             })
-
-            cached.loadedCount++
-            cached.progress = (cached.loadedCount / floors.length) * 100
-
-            onProgress?.(cached.loadedCount, floors.length)
           } catch (e) {
-            console.warn(`Failed to load floor ${floor.name}:`, e)
-            cached.loadedCount++
+            console.warn(`Failed to load floor ${floor.name}: `, e)
           }
         }),
       )
@@ -233,61 +196,119 @@ export function useBuildingScene() {
     cached.isLoading = false
   }
 
-  const disposeScene = (buildingId: string) => {
-    const cached = sceneCache.get(buildingId)
-    if (!cached) return
+  const setFloorSpaceColor = (
+    buildingId: string,
+    floorId: string,
+    color: THREE.ColorRepresentation,
+  ) => {
+    const building = buildingScenes.get(buildingId)
+    if (!building) return false
 
-    cached.floorLayers.forEach((mesh) => {
-      cached.scene.remove(mesh)
-      mesh.geometry.dispose()
-      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+    const floorSpace = building.floorSpaces.get(floorId)
+    if (!floorSpace) return false
+
+    const material = floorSpace.material as THREE.MeshBasicMaterial
+    material.color.set(color)
+
+    floorSpace.children.forEach((child) => {
+      if (child instanceof THREE.LineSegments) {
+        const edgeMaterial = child.material as THREE.LineBasicMaterial
+        edgeMaterial.color.set(color)
+      }
+    })
+
+    return true
+  }
+
+  const setDeviceMarkerColor = (
+    buildingId: string,
+    floorId: string,
+    deviceId: string,
+    color: THREE.ColorRepresentation,
+  ) => {
+    const building = buildingScenes.get(buildingId)
+    if (!building) return false
+
+    const floorDevices = building.deviceMarkers.get(floorId)
+    if (!floorDevices) return false
+
+    const marker = floorDevices.get(deviceId)
+    if (!marker) return false
+
+    const material = marker.material as THREE.MeshBasicMaterial
+    material.color.set(color)
+
+    return true
+  }
+
+  const disposeBuilding = (buildingId: string) => {
+    const building = buildingScenes.get(buildingId)
+    if (!building) return
+
+    building.floorPlanes.forEach((plane) => {
+      building.scene.remove(plane)
+      plane.geometry.dispose()
+
+      const materials = Array.isArray(plane.material) ? plane.material : [plane.material]
       materials.forEach((mat) => {
-        const materialWithMap = mat as MeshBasicMaterial
-        if (materialWithMap.map) {
-          materialWithMap.map.dispose()
-        }
+        const material = mat as THREE.MeshBasicMaterial
+        if (material.map) material.map.dispose()
         mat.dispose()
       })
     })
 
-    cached.floorAreas.forEach((mesh) => {
-      cached.scene.remove(mesh)
-      mesh.geometry.dispose()
-      if (Array.isArray(mesh.material)) {
-        mesh.material.forEach((mat) => mat.dispose())
-      } else {
-        mesh.material.dispose()
-      }
-      mesh.children.forEach((child) => {
-        if (child instanceof LineSegments) {
+    building.floorSpaces.forEach((space) => {
+      building.scene.remove(space)
+      space.geometry.dispose()
+
+      const materials = Array.isArray(space.material) ? space.material : [space.material]
+      materials.forEach((mat) => {
+        const material = mat as THREE.MeshBasicMaterial
+        if (material.map) material.map.dispose()
+        mat.dispose()
+      })
+
+      space.children.forEach((child) => {
+        if (child instanceof THREE.LineSegments) {
           child.geometry.dispose()
-          if (Array.isArray(child.material)) {
-            child.material.forEach((m) => m.dispose())
-          } else {
-            child.material.dispose()
-          }
+
+          const materials = Array.isArray(child.material) ? child.material : [child.material]
+          materials.forEach((mat) => {
+            const material = mat as THREE.MeshBasicMaterial
+            if (material.map) material.map.dispose()
+            mat.dispose()
+          })
         }
       })
     })
 
-    sceneCache.delete(buildingId)
+    building.deviceMarkers.forEach((floorDevices) => {
+      floorDevices.forEach((marker) => {
+        building.scene.remove(marker)
+        marker.geometry.dispose()
+
+        const materials = Array.isArray(marker.material) ? marker.material : [marker.material]
+        materials.forEach((material) => material.dispose())
+      })
+    })
+
+    buildingScenes.delete(buildingId)
   }
 
-  const clearCache = () => {
-    sceneCache.forEach((_, buildingId) => {
-      disposeScene(buildingId)
+  const clearAllBuildings = () => {
+    buildingScenes.forEach((_, buildingId) => {
+      disposeBuilding(buildingId)
     })
   }
 
   return {
     hasScene,
     isLoading,
-    getProgress,
-    getLoadedCount,
-    getTotalCount,
     getOrCreateScene,
-    loadFloorsToScene,
-    disposeScene,
-    clearCache,
+    renderBuilding,
+    setFloorSpaceColor,
+    setDeviceMarkerColor,
+    disposeBuilding,
+    clearAllBuildings,
   }
 }
