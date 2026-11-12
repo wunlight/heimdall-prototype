@@ -3,6 +3,7 @@ import SpatialViewer from '@/features/spatial-viewer/components/spatial-viewer.v
 import type { SpatialViewMode } from '@/features/spatial-viewer/types/spatial.type'
 import type { Building, Floor } from '@/shared/types/entity.type'
 import { onMounted, ref } from 'vue'
+import SimulationDialog from '../components/simulation-dialog.vue'
 import { useSpatialCache } from '../stores/spatial.cache'
 
 const store = useSpatialCache()
@@ -99,6 +100,14 @@ onMounted(() => {
           }"
         />
       </div>
+    </div>
+
+    <div class="absolute right-3 bottom-3 z-1">
+      <SimulationDialog>
+        <template #trigger="{ show }">
+          <Button icon="icon-[tabler--flask]" class="pointer-events-auto" @click="show" />
+        </template>
+      </SimulationDialog>
     </div>
   </div>
 </template>
