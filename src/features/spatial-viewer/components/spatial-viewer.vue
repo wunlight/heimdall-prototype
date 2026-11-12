@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { Building, Device, Floor } from '@/shared/types/entity.type.ts'
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, ref, useTemplateRef } from 'vue'
 import { useBuildingCamera } from '../composables/camera-control/building-camera.ts'
-import type { useFloorPlanCamera } from '../composables/camera-control/floor-plan-camera.ts'
+import type { useFloorCamera } from '../composables/camera-control/floor-camera.ts'
 import { useSpatialCommandQueue } from '../composables/use-spatial-command-queue.ts'
 import { useSpatialOrchestrator } from '../composables/use-spatial-orchestrator.ts'
-import type { Camera2DPayload, Camera3DPayload } from '../types/camera.type.ts'
+import type { BuildingCameraPayload, FloorCameraPayload } from '../types/camera.type.ts'
 import type { SpatialCommand, SpatialViewMode } from '../types/spatial.type.ts'
 import AmbientBackground from './ambient-background.vue'
 import BuildingModel from './building-model.vue'
@@ -22,51 +22,87 @@ const viewMode = defineModel<SpatialViewMode>('view-mode', { default: '3D' })
 const selectedBuilding = defineModel<Building | null>('selected-building', { default: null })
 const selectedFloor = defineModel<Floor | null>('selected-floor', { default: null })
 
-const camera3DController = ref<ReturnType<typeof useBuildingCamera> | null>(null)
-const camera2DController = ref<ReturnType<typeof useFloorPlanCamera> | null>(null)
+const buildingModelRef = useTemplateRef('building-model-ref')
 
-const handleCamera3DCommand = async (
-  payload: Camera3DPayload,
+const buildingCameraController = ref<ReturnType<typeof useBuildingCamera> | null>(null)
+const floorCameraController = ref<ReturnType<typeof useFloorCamera> | null>(null)
+
+const handleBuildingCameraCommand = async (
+  payload: BuildingCameraPayload,
   movement: 'ABSOLUTE' | 'RELATIVE',
   signal: AbortSignal,
 ): Promise<void> => {
-  if (!camera3DController.value) {
+  if (!buildingCameraController.value) {
     console.warn('Camera 3D controller not initialized')
     return
   }
 
   if (movement === 'ABSOLUTE') {
-    await camera3DController.value.executeAbsolute(payload, signal)
+    await buildingCameraController.value.executeAbsolute(payload, signal)
   } else {
-    await camera3DController.value.executeRelative(payload, signal)
+    await buildingCameraController.value.executeRelative(payload, signal)
   }
 }
 
-const handleCamera2DCommand = async (
-  payload: Camera2DPayload,
+const handleFloorCameraCommand = async (
+  payload: FloorCameraPayload,
   movement: 'ABSOLUTE' | 'RELATIVE',
   signal: AbortSignal,
 ): Promise<void> => {
-  if (!camera2DController.value) {
+  if (!floorCameraController.value) {
     console.warn('Camera 2D controller not initialized')
     return
   }
 
   if (movement === 'ABSOLUTE') {
-    await camera2DController.value.executeAbsolute(payload, signal)
+    await floorCameraController.value.executeAbsolute(payload, signal)
   } else {
-    await camera2DController.value.executeRelative(payload, signal)
+    await floorCameraController.value.executeRelative(payload, signal)
+  }
+}
+
+const handleFloorColorCommand = async (
+  buildingId: string,
+  floorId: string,
+  color: string,
+): Promise<void> => {
+  if (!buildingModelRef.value) {
+    return
+  }
+
+  const success = buildingModelRef.value.setFloorSpaceColor(buildingId, floorId, color)
+
+  if (!success) {
+    throw new Error(`Unable to update floor color: ${buildingId}/${floorId}`)
+  }
+}
+
+const handleDeviceColorCommand = async (
+  buildingId: string,
+  floorId: string,
+  deviceId: string,
+  color: string,
+): Promise<void> => {
+  if (!buildingModelRef.value) {
+    return
+  }
+
+  const success = buildingModelRef.value.setDeviceMarkerColor(buildingId, floorId, deviceId, color)
+
+  if (!success) {
+    throw new Error(`Unable to update device color: ${buildingId}/${floorId}/${deviceId}`)
   }
 }
 
 const { executeCommand: executeOrchestratedCommand } = useSpatialOrchestrator(
   viewMode,
-  handleCamera3DCommand,
-  handleCamera2DCommand,
+  handleBuildingCameraCommand,
+  handleFloorCameraCommand,
+  handleFloorColorCommand,
+  handleDeviceColorCommand,
 )
 
 const { enqueueCommand, clearQueue, getQueueState, setCommandExecutor } = useSpatialCommandQueue()
-
 setCommandExecutor(executeOrchestratedCommand)
 
 const executeSpatialCommand = async (command: SpatialCommand): Promise<boolean> => {
@@ -112,7 +148,7 @@ function handleCommandContext(command: SpatialCommand) {
     }
   }
 
-  if (command.type === 'CAMERA_3D') {
+  if (command.type === 'BUILDING_CAMERA') {
     if (context.buildingId) {
       const building = props.buildings.find((b) => b.id === context.buildingId)
       if (building && selectedBuilding.value?.id !== building.id) {
@@ -122,7 +158,7 @@ function handleCommandContext(command: SpatialCommand) {
     }
   }
 
-  if (command.type === 'CAMERA_2D') {
+  if (command.type === 'FLOOR_CAMERA') {
     if (context.buildingId && context.floorId) {
       const building = props.buildings.find((b) => b.id === context.buildingId)
       if (building && selectedBuilding.value?.id !== building.id) {
@@ -187,30 +223,30 @@ const currentBuildingStatus = computed(() => {
   return 'NORMAL'
 })
 
-function registerCamera3DController(controller: ReturnType<typeof useBuildingCamera>) {
-  camera3DController.value = controller
-  console.log('3D camera controller registered')
+function registerBuildingCameraControl(controller: ReturnType<typeof useBuildingCamera>) {
+  buildingCameraController.value = controller
+  console.log('building camera controller registered')
 }
 
-function unregisterCamera3DController() {
-  camera3DController.value = null
-  console.log('3D camera controller unregistered')
+function unregisterBuildingCameraControl() {
+  buildingCameraController.value = null
+  console.log('building camera controller unregistered')
 }
 
-function registerCamera2DController(controller: ReturnType<typeof useFloorPlanCamera>) {
-  camera2DController.value = controller
-  console.log('2D camera controller registered')
+function registerFloorCameraControl(controller: ReturnType<typeof useFloorCamera>) {
+  floorCameraController.value = controller
+  console.log('floor camera controller registered')
 }
 
-function unregisterCamera2DController() {
-  camera2DController.value = null
-  console.log('2D camera controller unregistered')
+function unregisterFloorCameraControl() {
+  floorCameraController.value = null
+  console.log('floor camera controller unregistered')
 }
 
 onUnmounted(() => {
   clearQueue()
-  camera3DController.value?.dispose()
-  camera2DController.value?.dispose()
+  buildingCameraController.value?.dispose()
+  floorCameraController.value?.dispose()
 })
 
 defineExpose({
@@ -227,11 +263,12 @@ defineExpose({
     <div class="absolute isolate inset-0 z-1">
       <template v-if="viewMode === '3D' && selectedBuilding">
         <BuildingModel
+          ref="building-model-ref"
           :building-id="selectedBuilding.id"
           :floors="currentFloors"
           :devices-by-floor="currentDevicesByFloor"
-          @controller-ready="registerCamera3DController"
-          @controller-disposed="unregisterCamera3DController"
+          @controller-ready="registerBuildingCameraControl"
+          @controller-disposed="unregisterBuildingCameraControl"
         />
       </template>
       <template v-else-if="viewMode === '2D' && selectedFloor">
@@ -239,8 +276,8 @@ defineExpose({
           :blueprint-url="selectedFloor.blueprint_url"
           :devices="currentDevices"
           class="pointer-events-auto"
-          @controller-ready="registerCamera2DController"
-          @controller-disposed="unregisterCamera2DController"
+          @controller-ready="registerFloorCameraControl"
+          @controller-disposed="unregisterFloorCameraControl"
         />
       </template>
     </div>

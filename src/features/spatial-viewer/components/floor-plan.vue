@@ -3,7 +3,7 @@ import type { Device } from '@/shared/types/entity.type'
 import { LImageOverlay, LMap, LMarker, LTooltip } from '@vue-leaflet/vue-leaflet'
 import { CRS, Map, type LatLngBoundsExpression, type PointExpression } from 'leaflet'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { useFloorPlanCamera } from '../composables/camera-control/floor-plan-camera'
+import { useFloorCamera } from '../composables/camera-control/floor-camera'
 
 type Props = {
   blueprintUrl: string
@@ -12,12 +12,12 @@ type Props = {
 const props = defineProps<Props>()
 
 type Emit = {
-  (event: 'controller-ready', controller: ReturnType<typeof useFloorPlanCamera>): void
+  (event: 'controller-ready', controller: ReturnType<typeof useFloorCamera>): void
   (event: 'controller-disposed'): void
 }
 const emit = defineEmits<Emit>()
 
-let camera2DController: ReturnType<typeof useFloorPlanCamera> | null = null
+let camera2DController: ReturnType<typeof useFloorCamera> | null = null
 
 const mapInstance = ref<Map | null>(null)
 const crs = CRS.Simple
@@ -49,7 +49,7 @@ const deviceMarkers = computed(() => {
 
 const onMapReady = (instance: Map) => {
   mapInstance.value = instance
-  camera2DController = useFloorPlanCamera(instance)
+  camera2DController = useFloorCamera(instance)
   emit('controller-ready', camera2DController)
 }
 

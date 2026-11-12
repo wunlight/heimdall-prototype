@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import type { OrbitControls } from 'three/examples/jsm/Addons.js'
 import { ref } from 'vue'
-import type { Camera3DPayload, Vector3 } from '../../types/camera.type'
+import type { BuildingCameraPayload, Vector3 } from '../../types/camera.type'
 
 const LOCKED_ELEVATION = Math.PI / 3
 
@@ -221,7 +221,7 @@ export function useBuildingCamera(
     })
   }
 
-  function resolveAbsoluteState(payload: Camera3DPayload): BuildingCameraState {
+  function resolveAbsoluteState(payload: BuildingCameraPayload): BuildingCameraState {
     const actualState = readCurrentState()
 
     return {
@@ -238,7 +238,10 @@ export function useBuildingCamera(
     }
   }
 
-  async function executeAbsolute(payload: Camera3DPayload, signal: AbortSignal): Promise<void> {
+  async function executeAbsolute(
+    payload: BuildingCameraPayload,
+    signal: AbortSignal,
+  ): Promise<void> {
     if (!camera || !controls) {
       console.warn('Camera or controls not available')
       return
@@ -251,7 +254,7 @@ export function useBuildingCamera(
     await animateToState(targetState, duration, signal)
   }
 
-  function resolveRelativeState(payload: Camera3DPayload): BuildingCameraState {
+  function resolveRelativeState(payload: BuildingCameraPayload): BuildingCameraState {
     const actualState = readCurrentState()
 
     return {
@@ -275,7 +278,10 @@ export function useBuildingCamera(
     }
   }
 
-  async function executeRelative(payload: Camera3DPayload, signal: AbortSignal): Promise<void> {
+  async function executeRelative(
+    payload: BuildingCameraPayload,
+    signal: AbortSignal,
+  ): Promise<void> {
     if (!camera || !controls) {
       console.warn('Camera or controls not available')
       return

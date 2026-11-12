@@ -22,7 +22,14 @@ let camera3DController: ReturnType<typeof useBuildingCamera> | null = null
 
 const canvasContainer = useTemplateRef<HTMLDivElement>('canvas-container')
 
-const { hasScene, isLoading, getOrCreateScene, renderBuilding } = useBuildingScene()
+const {
+  hasScene,
+  isLoading,
+  getOrCreateScene,
+  renderBuilding,
+  setFloorSpaceColor,
+  setDeviceMarkerColor,
+} = useBuildingScene()
 let rendererController: ReturnType<typeof useBuildingRenderer> | null = null
 
 const isSceneLoading = ref(false)
@@ -108,6 +115,11 @@ watch(
   },
   { immediate: false, deep: true },
 )
+
+defineExpose({
+  setFloorSpaceColor,
+  setDeviceMarkerColor,
+})
 </script>
 
 <template>

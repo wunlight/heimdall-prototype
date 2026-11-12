@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import SpatialViewer from '@/features/spatial-viewer/components/spatial-viewer.vue'
-import type { SpatialViewMode } from '@/features/spatial-viewer/types/spatial.type'
+import type { SpatialCommand, SpatialViewMode } from '@/features/spatial-viewer/types/spatial.type'
 import type { Building, Floor } from '@/shared/types/entity.type'
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, useTemplateRef } from 'vue'
 import SimulationDialog from '../components/simulation-dialog.vue'
+import { useEventProcessor } from '../composables/event-processor.ts'
+import { mockWS } from '../services/mock-ws.service.ts'
 import { useSpatialCache } from '../stores/spatial.cache'
 
 const store = useSpatialCache()
+
+const spatialViewerRef = useTemplateRef('spatial-viewer')
 
 const viewMode = ref<SpatialViewMode>('3D')
 const selectedBuilding = ref<Building | null>(null)
@@ -24,15 +28,96 @@ function selectBuilding(building: Building) {
   }
 }
 
+function createCommandId(): string {
+  return `monitoring-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+async function dispatchSpatialCommand(command: SpatialCommand): Promise<void> {
+  const viewer = spatialViewerRef.value
+
+  if (!viewer) {
+    throw new Error('SpatialViewer is not initialized')
+  }
+
+  const accepted = await viewer.executeSpatialCommand(command)
+
+  if (!accepted) {
+    throw new Error(`Spatial command failed: ${command.type}`)
+  }
+}
+
+async function dispatchDeviceColor(
+  buildingId: string,
+  floorId: string,
+  deviceId: string,
+  color: string,
+): Promise<void> {
+  await dispatchSpatialCommand({
+    id: createCommandId(),
+    timestamp: Date.now(),
+    source: 'WEBSOCKET',
+    type: 'DEVICE_COLOR',
+    context: {
+      buildingId,
+      floorId,
+      deviceId,
+    },
+    payload: { color },
+  })
+}
+
+async function dispatchFloorColor(
+  buildingId: string,
+  floorId: string,
+  color: string,
+): Promise<void> {
+  await dispatchSpatialCommand({
+    id: createCommandId(),
+    timestamp: Date.now(),
+    source: 'WEBSOCKET',
+    type: 'FLOOR_COLOR',
+    context: {
+      buildingId,
+      floorId,
+    },
+    payload: { color },
+  })
+}
+
+const processor = useEventProcessor({
+  devices: store.cachedDevices,
+  floors: store.cachedFloors,
+  updateDeviceStatus: (deviceId, status) => {},
+  updateFloorStatus: (floorId, status) => {},
+  dispatchDeviceColor,
+  dispatchFloorColor,
+})
+
+let unsubscribe: (() => void) | undefined
+let eventProcessing = Promise.resolve()
+
+function handleIncomingEvent(event: Parameters<typeof processor.processEvent>[0]) {
+  eventProcessing = eventProcessing
+    .then(() => processor.processEvent(event))
+    .catch((error) => {
+      console.error('Failed to process monitoring event:', error)
+    })
+}
+
 onMounted(() => {
   if (store.buildings.length > 0) selectBuilding(store.buildings[0]!)
+  unsubscribe = mockWS.onMessage(handleIncomingEvent)
+})
+
+onUnmounted(() => {
+  unsubscribe?.()
 })
 </script>
 
 <template>
   <div class="relative h-svh overflow-hidden pointer-events-none">
     <SpatialViewer
-      ref="spatialViewerRef"
+      ref="spatial-viewer"
       :buildings="store.buildings"
       :floors="store.cachedFloors"
       :devices="store.cachedDevices"
