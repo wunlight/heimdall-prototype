@@ -37,6 +37,7 @@ Heimdall is a spatial monitoring prototype designed to visualize fire incidents 
 ## Work In Progress
 
 The following components are currently under development:
+
 - WebSocket Integration: Connecting incoming event payloads to the spatial command execution system.
 - Event Simulation: Simulating fire incidents and sequential device activations.
 - Event Replay Engine: Replaying chronological incident timelines and visualizing device activation sequences.

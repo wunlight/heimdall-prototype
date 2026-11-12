@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Building, Device, Floor } from '@/shared/types/entity.type.ts'
 import { computed, onUnmounted, ref } from 'vue'
-import { useCamera3DController } from '../composables/camera-control/3d-camera-controller.ts'
-import { useCamera2DController } from '../composables/use-camera-2d-controller.ts'
+import { useBuildingCamera } from '../composables/camera-control/building-camera.ts'
+import type { useFloorPlanCamera } from '../composables/camera-control/floor-plan-camera.ts'
 import { useSpatialCommandQueue } from '../composables/use-spatial-command-queue.ts'
 import { useSpatialOrchestrator } from '../composables/use-spatial-orchestrator.ts'
 import type { Camera2DPayload, Camera3DPayload } from '../types/camera.type.ts'
@@ -22,8 +22,8 @@ const viewMode = defineModel<SpatialViewMode>('view-mode', { default: '3D' })
 const selectedBuilding = defineModel<Building | null>('selected-building', { default: null })
 const selectedFloor = defineModel<Floor | null>('selected-floor', { default: null })
 
-const camera3DController = ref<ReturnType<typeof useCamera3DController> | null>(null)
-const camera2DController = ref<ReturnType<typeof useCamera2DController> | null>(null)
+const camera3DController = ref<ReturnType<typeof useBuildingCamera> | null>(null)
+const camera2DController = ref<ReturnType<typeof useFloorPlanCamera> | null>(null)
 
 const handleCamera3DCommand = async (
   payload: Camera3DPayload,
@@ -187,7 +187,7 @@ const currentBuildingStatus = computed(() => {
   return 'NORMAL'
 })
 
-function registerCamera3DController(controller: ReturnType<typeof useCamera3DController>) {
+function registerCamera3DController(controller: ReturnType<typeof useBuildingCamera>) {
   camera3DController.value = controller
   console.log('3D camera controller registered')
 }
@@ -197,7 +197,7 @@ function unregisterCamera3DController() {
   console.log('3D camera controller unregistered')
 }
 
-function registerCamera2DController(controller: ReturnType<typeof useCamera2DController>) {
+function registerCamera2DController(controller: ReturnType<typeof useFloorPlanCamera>) {
   camera2DController.value = controller
   console.log('2D camera controller registered')
 }
