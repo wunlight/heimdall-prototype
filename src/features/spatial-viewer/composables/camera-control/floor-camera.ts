@@ -1,28 +1,28 @@
 import type { Map } from 'leaflet'
 import { ref } from 'vue'
-import type { Camera2DPayload, GeoCoordinate } from '../types/camera.type'
+import type { FloorCameraPayload, GeoCoordinate } from '../../types/camera.type'
 
-const DEFAULT_2D_VALUES = {
+export interface FloorCameraState {
+  center: GeoCoordinate
+  zoom: number
+}
+
+const DEFAULT_VALUES = {
   center: { lat: 0, lng: 0 },
   zoom: 0,
   duration: 1000,
 }
 
-export interface Camera2DState {
-  center: GeoCoordinate
-  zoom: number
-}
-
-export function useCamera2DController(mapInstance: Map | null) {
-  const currentState = ref<Camera2DState>({
-    center: { ...DEFAULT_2D_VALUES.center },
-    zoom: DEFAULT_2D_VALUES.zoom,
+export function useFloorCamera(mapInstance: Map | null) {
+  const currentState = ref<FloorCameraState>({
+    center: { ...DEFAULT_VALUES.center },
+    zoom: DEFAULT_VALUES.zoom,
   })
 
   const isAnimating = ref(false)
   let currentAbortController: AbortController | null = null
 
-  function readCurrentState(): Camera2DState {
+  function readCurrentState(): FloorCameraState {
     if (!mapInstance) {
       return { ...currentState.value }
     }
@@ -36,7 +36,7 @@ export function useCamera2DController(mapInstance: Map | null) {
     return state
   }
 
-  function applyState(state: Camera2DState, duration: number = 0) {
+  function applyState(state: FloorCameraState, duration: number = 0) {
     if (!mapInstance) return
 
     if (duration > 0) {
@@ -51,7 +51,7 @@ export function useCamera2DController(mapInstance: Map | null) {
   }
 
   function animateToState(
-    targetState: Camera2DState,
+    targetState: FloorCameraState,
     duration: number,
     signal: AbortSignal,
   ): Promise<void> {
@@ -66,28 +66,6 @@ export function useCamera2DController(mapInstance: Map | null) {
       }
 
       isAnimating.value = true
-
-      const onMoveEnd = () => {
-        if (!signal.aborted) {
-          isAnimating.value = false
-          currentState.value = { ...targetState }
-          signal.removeEventListener('abort', onAbort)
-          resolve()
-        }
-      }
-
-      // const onAbort = () => {
-      //   mapInstance.stop()
-      //   mapInstance.off('moveend', onMoveEnd)
-      //   isAnimating.value = false
-      //   reject(new DOMException('Aborted', 'AbortError'))
-      // }
-
-      // signal.addEventListener('abort', onAbort, { once: true })
-      mapInstance.flyTo([targetState.center.lat, targetState.center.lng], targetState.zoom, {
-        duration: duration / 1000,
-      })
-      mapInstance.once('moveend', onMoveEnd)
 
       const timeout = setTimeout(() => {
         if (!signal.aborted) {
@@ -105,26 +83,41 @@ export function useCamera2DController(mapInstance: Map | null) {
       }
 
       signal.addEventListener('abort', onAbort, { once: true })
+
+      const onMoveEnd = () => {
+        if (!signal.aborted) {
+          isAnimating.value = false
+          currentState.value = { ...targetState }
+          signal.removeEventListener('abort', onAbort)
+          resolve()
+        }
+      }
+
+      mapInstance.flyTo([targetState.center.lat, targetState.center.lng], targetState.zoom, {
+        duration: duration / 1000,
+      })
+
+      mapInstance.once('moveend', onMoveEnd)
     })
   }
 
-  async function executeAbsolute(payload: Camera2DPayload, signal: AbortSignal): Promise<void> {
+  async function executeAbsolute(payload: FloorCameraPayload, signal: AbortSignal): Promise<void> {
     if (!mapInstance) {
       console.warn('Map instance not available')
       return
     }
 
-    const targetState: Camera2DState = {
-      center: payload.center || { ...DEFAULT_2D_VALUES.center },
-      zoom: payload.zoom !== undefined ? payload.zoom : DEFAULT_2D_VALUES.zoom,
+    const targetState: FloorCameraState = {
+      center: payload.center || { ...DEFAULT_VALUES.center },
+      zoom: payload.zoom !== undefined ? payload.zoom : DEFAULT_VALUES.zoom,
     }
 
-    const duration = payload.duration !== undefined ? payload.duration : DEFAULT_2D_VALUES.duration
+    const duration = payload.duration !== undefined ? payload.duration : DEFAULT_VALUES.duration
 
     await animateToState(targetState, duration, signal)
   }
 
-  async function executeRelative(payload: Camera2DPayload, signal: AbortSignal): Promise<void> {
+  async function executeRelative(payload: FloorCameraPayload, signal: AbortSignal): Promise<void> {
     if (!mapInstance) {
       console.warn('Map instance not available')
       return
@@ -132,7 +125,7 @@ export function useCamera2DController(mapInstance: Map | null) {
 
     const currentState = readCurrentState()
 
-    const targetState: Camera2DState = {
+    const targetState: FloorCameraState = {
       center: payload.center
         ? {
             lat: currentState.center.lat + payload.center.lat,
@@ -142,7 +135,7 @@ export function useCamera2DController(mapInstance: Map | null) {
       zoom: payload.zoom !== undefined ? currentState.zoom + payload.zoom : currentState.zoom,
     }
 
-    const duration = payload.duration !== undefined ? payload.duration : DEFAULT_2D_VALUES.duration
+    const duration = payload.duration !== undefined ? payload.duration : DEFAULT_VALUES.duration
 
     await animateToState(targetState, duration, signal)
   }

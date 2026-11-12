@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import type { OrbitControls } from 'three/examples/jsm/Addons.js'
 import { ref } from 'vue'
-import type { Camera3DPayload, Vector3 } from '../../types/camera.type'
+import type { BuildingCameraPayload, Vector3 } from '../../types/camera.type'
 
 const LOCKED_ELEVATION = Math.PI / 3
 
@@ -11,18 +11,18 @@ const DEFAULT_3D_VALUES = {
   duration: 1000,
 }
 
-export interface Camera3DState {
+export interface BuildingCameraState {
   target: Vector3
   azimuth: number
   elevation: number
   distance: number
 }
 
-export function useCamera3DController(
+export function useBuildingCamera(
   camera: THREE.PerspectiveCamera | null,
   controls: OrbitControls | null,
 ) {
-  const currentState = ref<Camera3DState>({
+  const currentState = ref<BuildingCameraState>({
     target: { ...DEFAULT_3D_VALUES.target },
     azimuth: 0,
     elevation: LOCKED_ELEVATION,
@@ -31,7 +31,7 @@ export function useCamera3DController(
 
   const isAnimating = ref(false)
 
-  let animationFrame: number | null = null
+  let _animationFrame: number | null = null
   let activeAnimationController: AbortController | null = null
 
   function getShortestAngleDelta(from: number, to: number): number {
@@ -42,7 +42,7 @@ export function useCamera3DController(
     return currentAzimuth + getShortestAngleDelta(currentAzimuth, desiredAzimuth)
   }
 
-  function readCurrentState(): Camera3DState {
+  function readCurrentState(): BuildingCameraState {
     if (!camera || !controls) {
       return { ...currentState.value }
     }
@@ -53,7 +53,7 @@ export function useCamera3DController(
 
     const spherical = new THREE.Spherical().setFromVector3(offset)
 
-    const state: Camera3DState = {
+    const state: BuildingCameraState = {
       target: {
         x: controls.target.x,
         y: controls.target.y,
@@ -69,7 +69,7 @@ export function useCamera3DController(
     return state
   }
 
-  function applyState(state: Camera3DState): void {
+  function applyState(state: BuildingCameraState): void {
     if (!camera || !controls) return
 
     const distance = Math.max(0.01, state.distance)
@@ -99,7 +99,7 @@ export function useCamera3DController(
   }
 
   function animateToState(
-    targetState: Camera3DState,
+    targetState: BuildingCameraState,
     duration: number,
     externalSignal: AbortSignal,
   ): Promise<void> {
@@ -137,7 +137,7 @@ export function useCamera3DController(
 
         if (activeAnimationController === animationController) {
           activeAnimationController = null
-          animationFrame = null
+          _animationFrame = null
           isAnimating.value = false
         }
       }
@@ -189,7 +189,7 @@ export function useCamera3DController(
         const eased =
           progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2
 
-        const interpolatedState: Camera3DState = {
+        const interpolatedState: BuildingCameraState = {
           target: {
             x: startState.target.x + (targetState.target.x - startState.target.x) * eased,
 
@@ -209,7 +209,7 @@ export function useCamera3DController(
 
         if (progress < 1) {
           frameId = requestAnimationFrame(animate)
-          animationFrame = frameId
+          _animationFrame = frameId
         } else {
           applyState(targetState)
           finish()
@@ -217,11 +217,11 @@ export function useCamera3DController(
       }
 
       frameId = requestAnimationFrame(animate)
-      animationFrame = frameId
+      _animationFrame = frameId
     })
   }
 
-  function resolveAbsoluteState(payload: Camera3DPayload): Camera3DState {
+  function resolveAbsoluteState(payload: BuildingCameraPayload): BuildingCameraState {
     const actualState = readCurrentState()
 
     return {
@@ -238,7 +238,10 @@ export function useCamera3DController(
     }
   }
 
-  async function executeAbsolute(payload: Camera3DPayload, signal: AbortSignal): Promise<void> {
+  async function executeAbsolute(
+    payload: BuildingCameraPayload,
+    signal: AbortSignal,
+  ): Promise<void> {
     if (!camera || !controls) {
       console.warn('Camera or controls not available')
       return
@@ -251,7 +254,7 @@ export function useCamera3DController(
     await animateToState(targetState, duration, signal)
   }
 
-  function resolveRelativeState(payload: Camera3DPayload): Camera3DState {
+  function resolveRelativeState(payload: BuildingCameraPayload): BuildingCameraState {
     const actualState = readCurrentState()
 
     return {
@@ -275,7 +278,10 @@ export function useCamera3DController(
     }
   }
 
-  async function executeRelative(payload: Camera3DPayload, signal: AbortSignal): Promise<void> {
+  async function executeRelative(
+    payload: BuildingCameraPayload,
+    signal: AbortSignal,
+  ): Promise<void> {
     if (!camera || !controls) {
       console.warn('Camera or controls not available')
       return

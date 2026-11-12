@@ -1,4 +1,4 @@
-import type { Camera2DPayload, Camera3DPayload, CameraMovement } from './camera.type'
+import type { BuildingCameraPayload, CameraMovement, FloorCameraPayload } from './camera.type'
 
 export type SpatialViewMode = '3D' | '2D'
 
@@ -7,6 +7,7 @@ export type SpatialCommandSource = 'WEBSOCKET' | 'REPLAY' | 'SYSTEM'
 export interface SpatialContext {
   buildingId?: string
   floorId?: string
+  deviceId?: string
 }
 
 export interface BaseSpatialCommand {
@@ -21,18 +22,30 @@ export interface SwitchViewCommand extends BaseSpatialCommand {
   target: SpatialViewMode
 }
 
-export interface Camera3DCommand extends BaseSpatialCommand {
-  type: 'CAMERA_3D'
+export interface BuildingCameraCommand extends BaseSpatialCommand {
+  type: 'BUILDING_CAMERA'
   movement: CameraMovement
-  payload: Camera3DPayload
+  payload: BuildingCameraPayload
 }
 
-export interface Camera2DCommand extends BaseSpatialCommand {
-  type: 'CAMERA_2D'
+export interface FloorCameraCommand extends BaseSpatialCommand {
+  type: 'FLOOR_CAMERA'
   movement: CameraMovement
-  payload: Camera2DPayload
+  payload: FloorCameraPayload
 }
 
-export type CameraCommand = Camera3DCommand | Camera2DCommand
+export type CameraCommand = BuildingCameraCommand | FloorCameraCommand
 
-export type SpatialCommand = SwitchViewCommand | CameraCommand
+export interface FloorColorCommand extends BaseSpatialCommand {
+  type: 'FLOOR_COLOR'
+  payload: { color: string }
+}
+
+export interface DeviceColorCommand extends BaseSpatialCommand {
+  type: 'DEVICE_COLOR'
+  payload: { color: string }
+}
+
+export type ColorCommand = FloorColorCommand | DeviceColorCommand
+
+export type SpatialCommand = SwitchViewCommand | CameraCommand | ColorCommand

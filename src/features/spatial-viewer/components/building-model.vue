@@ -3,7 +3,7 @@ import type { Device, Floor } from '@/shared/types/entity.type'
 import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useBuildingRenderer } from '../composables/building/renderer'
 import { useBuildingScene } from '../composables/building/scene'
-import { useCamera3DController } from '../composables/camera-control/3d-camera-controller'
+import { useBuildingCamera } from '../composables/camera-control/building-camera'
 
 type Props = {
   buildingId: string
@@ -13,16 +13,23 @@ type Props = {
 const props = defineProps<Props>()
 
 type Emit = {
-  (event: 'controller-ready', controller: ReturnType<typeof useCamera3DController>): void
+  (event: 'controller-ready', controller: ReturnType<typeof useBuildingCamera>): void
   (event: 'controller-disposed'): void
 }
 const emit = defineEmits<Emit>()
 
-let camera3DController: ReturnType<typeof useCamera3DController> | null = null
+let camera3DController: ReturnType<typeof useBuildingCamera> | null = null
 
 const canvasContainer = useTemplateRef<HTMLDivElement>('canvas-container')
 
-const { hasScene, isLoading, getOrCreateScene, renderBuilding } = useBuildingScene()
+const {
+  hasScene,
+  isLoading,
+  getOrCreateScene,
+  renderBuilding,
+  setFloorSpaceColor,
+  setDeviceMarkerColor,
+} = useBuildingScene()
 let rendererController: ReturnType<typeof useBuildingRenderer> | null = null
 
 const isSceneLoading = ref(false)
@@ -70,10 +77,7 @@ onMounted(async () => {
 
   rendererController = useBuildingRenderer(canvasContainer.value)
   if (rendererController) {
-    camera3DController = useCamera3DController(
-      rendererController.camera,
-      rendererController.controls,
-    )
+    camera3DController = useBuildingCamera(rendererController.camera, rendererController.controls)
     emit('controller-ready', camera3DController)
   }
 
@@ -111,6 +115,11 @@ watch(
   },
   { immediate: false, deep: true },
 )
+
+defineExpose({
+  setFloorSpaceColor,
+  setDeviceMarkerColor,
+})
 </script>
 
 <template>

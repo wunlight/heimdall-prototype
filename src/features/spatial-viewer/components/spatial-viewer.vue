@@ -1,68 +1,108 @@
 <script setup lang="ts">
 import type { Building, Device, Floor } from '@/shared/types/entity.type.ts'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useCamera3DController } from '../composables/camera-control/3d-camera-controller.ts'
-import { useCamera2DController } from '../composables/use-camera-2d-controller.ts'
+import { computed, onUnmounted, ref, useTemplateRef } from 'vue'
+import { useBuildingCamera } from '../composables/camera-control/building-camera.ts'
+import type { useFloorCamera } from '../composables/camera-control/floor-camera.ts'
 import { useSpatialCommandQueue } from '../composables/use-spatial-command-queue.ts'
 import { useSpatialOrchestrator } from '../composables/use-spatial-orchestrator.ts'
-import { useSpatialStore } from '../stores/spatial.store.ts'
-import type { Camera2DPayload, Camera3DPayload } from '../types/camera.type.ts'
+import type { BuildingCameraPayload, FloorCameraPayload } from '../types/camera.type.ts'
 import type { SpatialCommand, SpatialViewMode } from '../types/spatial.type.ts'
 import AmbientBackground from './ambient-background.vue'
 import BuildingModel from './building-model.vue'
 import FloorPlan from './floor-plan.vue'
 
-const store = useSpatialStore()
+type Props = {
+  buildings: Building[]
+  floors: Map<string, Floor[]>
+  devices: Map<string, Device[]>
+}
+const props = defineProps<Props>()
 
-const viewMode = ref<SpatialViewMode>('3D')
-const selectedBuilding = ref<Building | null>(null)
-const selectedFloor = ref<Floor | null>(null)
+const viewMode = defineModel<SpatialViewMode>('view-mode', { default: '3D' })
+const selectedBuilding = defineModel<Building | null>('selected-building', { default: null })
+const selectedFloor = defineModel<Floor | null>('selected-floor', { default: null })
 
-const camera3DController = ref<ReturnType<typeof useCamera3DController> | null>(null)
-const camera2DController = ref<ReturnType<typeof useCamera2DController> | null>(null)
+const buildingModelRef = useTemplateRef('building-model-ref')
 
-const handleCamera3DCommand = async (
-  payload: Camera3DPayload,
+const buildingCameraController = ref<ReturnType<typeof useBuildingCamera> | null>(null)
+const floorCameraController = ref<ReturnType<typeof useFloorCamera> | null>(null)
+
+const handleBuildingCameraCommand = async (
+  payload: BuildingCameraPayload,
   movement: 'ABSOLUTE' | 'RELATIVE',
   signal: AbortSignal,
 ): Promise<void> => {
-  if (!camera3DController.value) {
+  if (!buildingCameraController.value) {
     console.warn('Camera 3D controller not initialized')
     return
   }
 
   if (movement === 'ABSOLUTE') {
-    await camera3DController.value.executeAbsolute(payload, signal)
+    await buildingCameraController.value.executeAbsolute(payload, signal)
   } else {
-    await camera3DController.value.executeRelative(payload, signal)
+    await buildingCameraController.value.executeRelative(payload, signal)
   }
 }
 
-const handleCamera2DCommand = async (
-  payload: Camera2DPayload,
+const handleFloorCameraCommand = async (
+  payload: FloorCameraPayload,
   movement: 'ABSOLUTE' | 'RELATIVE',
   signal: AbortSignal,
 ): Promise<void> => {
-  if (!camera2DController.value) {
+  if (!floorCameraController.value) {
     console.warn('Camera 2D controller not initialized')
     return
   }
 
   if (movement === 'ABSOLUTE') {
-    await camera2DController.value.executeAbsolute(payload, signal)
+    await floorCameraController.value.executeAbsolute(payload, signal)
   } else {
-    await camera2DController.value.executeRelative(payload, signal)
+    await floorCameraController.value.executeRelative(payload, signal)
+  }
+}
+
+const handleFloorColorCommand = async (
+  buildingId: string,
+  floorId: string,
+  color: string,
+): Promise<void> => {
+  if (!buildingModelRef.value) {
+    return
+  }
+
+  const success = buildingModelRef.value.setFloorSpaceColor(buildingId, floorId, color)
+
+  if (!success) {
+    throw new Error(`Unable to update floor color: ${buildingId}/${floorId}`)
+  }
+}
+
+const handleDeviceColorCommand = async (
+  buildingId: string,
+  floorId: string,
+  deviceId: string,
+  color: string,
+): Promise<void> => {
+  if (!buildingModelRef.value) {
+    return
+  }
+
+  const success = buildingModelRef.value.setDeviceMarkerColor(buildingId, floorId, deviceId, color)
+
+  if (!success) {
+    throw new Error(`Unable to update device color: ${buildingId}/${floorId}/${deviceId}`)
   }
 }
 
 const { executeCommand: executeOrchestratedCommand } = useSpatialOrchestrator(
   viewMode,
-  handleCamera3DCommand,
-  handleCamera2DCommand,
+  handleBuildingCameraCommand,
+  handleFloorCameraCommand,
+  handleFloorColorCommand,
+  handleDeviceColorCommand,
 )
 
 const { enqueueCommand, clearQueue, getQueueState, setCommandExecutor } = useSpatialCommandQueue()
-
 setCommandExecutor(executeOrchestratedCommand)
 
 const executeSpatialCommand = async (command: SpatialCommand): Promise<boolean> => {
@@ -76,7 +116,7 @@ function handleCommandContext(command: SpatialCommand) {
 
   if (command.type === 'SWITCH_VIEW' && command.target === '3D') {
     if (context.buildingId) {
-      const building = store.buildings.find((b) => b.id === context.buildingId)
+      const building = props.buildings.find((b) => b.id === context.buildingId)
       if (building && selectedBuilding.value?.id !== building.id) {
         selectedBuilding.value = building
         console.log('Context: Selected building for 3D view:', building.id)
@@ -86,13 +126,13 @@ function handleCommandContext(command: SpatialCommand) {
 
   if (command.type === 'SWITCH_VIEW' && command.target === '2D') {
     if (context.buildingId && context.floorId) {
-      const building = store.buildings.find((b) => b.id === context.buildingId)
+      const building = props.buildings.find((b) => b.id === context.buildingId)
       if (building) {
         if (selectedBuilding.value?.id !== building.id) {
           selectedBuilding.value = building
         }
 
-        const floors = store.getFloorsByBuildingId(context.buildingId)
+        const floors = props.floors.get(context.buildingId) ?? []
         const floor = floors.find((f) => f.id === context.floorId)
         if (floor) {
           selectedFloor.value = floor
@@ -108,9 +148,9 @@ function handleCommandContext(command: SpatialCommand) {
     }
   }
 
-  if (command.type === 'CAMERA_3D') {
+  if (command.type === 'BUILDING_CAMERA') {
     if (context.buildingId) {
-      const building = store.buildings.find((b) => b.id === context.buildingId)
+      const building = props.buildings.find((b) => b.id === context.buildingId)
       if (building && selectedBuilding.value?.id !== building.id) {
         selectedBuilding.value = building
         console.log('Context: Selected building for Camera 3D:', building.id)
@@ -118,15 +158,15 @@ function handleCommandContext(command: SpatialCommand) {
     }
   }
 
-  if (command.type === 'CAMERA_2D') {
+  if (command.type === 'FLOOR_CAMERA') {
     if (context.buildingId && context.floorId) {
-      const building = store.buildings.find((b) => b.id === context.buildingId)
+      const building = props.buildings.find((b) => b.id === context.buildingId)
       if (building && selectedBuilding.value?.id !== building.id) {
         selectedBuilding.value = building
         console.log('Context: Selected building for Camera 2D:', building.id)
       }
 
-      const floors = store.getFloorsByBuildingId(context.buildingId)
+      const floors = props.floors.get(context.buildingId) ?? []
       const floor = floors.find((f) => f.id === context.floorId)
       if (floor && selectedFloor.value?.id !== floor.id) {
         selectedFloor.value = floor
@@ -146,90 +186,89 @@ const getCommandQueueState = () => {
   return getQueueState()
 }
 
+const currentFloors = computed(() => {
+  if (!selectedBuilding.value) return []
+  return props.floors.get(selectedBuilding.value.id) ?? []
+})
+
+const currentDevices = computed(() => {
+  if (!selectedFloor.value) return []
+  return props.devices.get(selectedFloor.value.id) ?? []
+})
+
+const currentDevicesByFloor = computed(() => {
+  if (!selectedBuilding.value) return new Map<string, Device[]>()
+  const floors = props.floors.get(selectedBuilding.value.id) ?? []
+  return new Map(floors.map((floor) => [floor.id, props.devices.get(floor.id) ?? []]))
+})
+
+const currentBuildingStatus = computed(() => {
+  if (selectedBuilding.value) {
+    const floors = props.floors.get(selectedBuilding.value.id) ?? []
+    if (floors.length === 0) return 'NORMAL'
+
+    for (const floor of floors) {
+      const devices = props.devices.get(floor.id) ?? []
+
+      for (const device of devices) {
+        if (device.status === 'ALARM') {
+          return 'ALARM'
+        }
+        if (device.status === 'TROUBLE') {
+          return 'TROUBLE'
+        }
+      }
+    }
+  }
+  return 'NORMAL'
+})
+
+function registerBuildingCameraControl(controller: ReturnType<typeof useBuildingCamera>) {
+  buildingCameraController.value = controller
+  console.log('building camera controller registered')
+}
+
+function unregisterBuildingCameraControl() {
+  buildingCameraController.value = null
+  console.log('building camera controller unregistered')
+}
+
+function registerFloorCameraControl(controller: ReturnType<typeof useFloorCamera>) {
+  floorCameraController.value = controller
+  console.log('floor camera controller registered')
+}
+
+function unregisterFloorCameraControl() {
+  floorCameraController.value = null
+  console.log('floor camera controller unregistered')
+}
+
+onUnmounted(() => {
+  clearQueue()
+  buildingCameraController.value?.dispose()
+  floorCameraController.value?.dispose()
+})
+
 defineExpose({
   executeSpatialCommand,
   clearCommandQueue,
   getCommandQueueState,
 })
-
-const currentFloors = computed(() => {
-  if (!selectedBuilding.value) return []
-  return store.getFloorsByBuildingId(selectedBuilding.value.id)
-})
-
-const currentDevices = computed(() => {
-  if (!selectedFloor.value) return []
-  return store.getDevicesByFloorId(selectedFloor.value.id)
-})
-
-const currentDevicesByFloor = computed(() => {
-  if (!selectedBuilding.value) return new Map<string, Device[]>()
-  return store.getDevicesByBuildingId(selectedBuilding.value.id)
-})
-
-const currentBuildingStatus = computed(() => {
-  if (!selectedBuilding.value) return 'NORMAL'
-  return store.getBuildingStatus(selectedBuilding.value.id)
-})
-
-function registerCamera3DController(controller: ReturnType<typeof useCamera3DController>) {
-  camera3DController.value = controller
-  console.log('3D camera controller registered')
-}
-
-function unregisterCamera3DController() {
-  camera3DController.value = null
-  console.log('3D camera controller unregistered')
-}
-
-function registerCamera2DController(controller: ReturnType<typeof useCamera2DController>) {
-  camera2DController.value = controller
-  console.log('2D camera controller registered')
-}
-
-function unregisterCamera2DController() {
-  camera2DController.value = null
-  console.log('2D camera controller unregistered')
-}
-
-function selectBuilding(building: Building) {
-  selectedBuilding.value = building
-
-  const floors = store.getFloorsByBuildingId(building.id)
-
-  if (viewMode.value === '2D') {
-    selectedFloor.value = floors[0] ?? null
-  } else {
-    selectedFloor.value =
-      floors.find((floor) => floor.id === selectedFloor.value?.id) ?? floors[0] ?? null
-  }
-}
-
-onMounted(() => {
-  if (store.buildings.length > 0) {
-    selectedBuilding.value = store.buildings[0]!
-  }
-})
-
-onUnmounted(() => {
-  clearQueue()
-  camera3DController.value?.dispose()
-  camera2DController.value?.dispose()
-})
 </script>
 
 <template>
   <div class="size-full">
-    <AmbientBackground class="relative isolate z-0 size-full" :state="currentBuildingStatus" />
+    <AmbientBackground class="absolute isolate inset-0 z-0" :state="currentBuildingStatus" />
 
     <div class="absolute isolate inset-0 z-1">
       <template v-if="viewMode === '3D' && selectedBuilding">
         <BuildingModel
+          ref="building-model-ref"
           :building-id="selectedBuilding.id"
           :floors="currentFloors"
           :devices-by-floor="currentDevicesByFloor"
-          @controller-ready="registerCamera3DController"
-          @controller-disposed="unregisterCamera3DController"
+          @controller-ready="registerBuildingCameraControl"
+          @controller-disposed="unregisterBuildingCameraControl"
         />
       </template>
       <template v-else-if="viewMode === '2D' && selectedFloor">
@@ -237,70 +276,10 @@ onUnmounted(() => {
           :blueprint-url="selectedFloor.blueprint_url"
           :devices="currentDevices"
           class="pointer-events-auto"
-          @controller-ready="registerCamera2DController"
-          @controller-disposed="unregisterCamera2DController"
+          @controller-ready="registerFloorCameraControl"
+          @controller-disposed="unregisterFloorCameraControl"
         />
       </template>
-    </div>
-
-    <div class="absolute left-2 top-2 z-2">
-      <div
-        class="flex flex-col gap-2 p-2 max-h-56 w-64 bg-surface-900 rounded-md overflow-y-auto pointer-events-auto"
-      >
-        <Button
-          v-for="item in store.buildings"
-          :key="item.id"
-          :label="item.name"
-          icon="icon-[tabler--building]"
-          :severity="selectedBuilding?.id === item.id ? 'contrast' : 'secondary'"
-          class="shrink-0 justify-start!"
-          @click="selectBuilding(item)"
-        />
-      </div>
-    </div>
-
-    <div class="absolute right-2 top-2 z-2">
-      <div class="flex gap-1 p-1 bg-surface-900 rounded-md pointer-events-auto">
-        <Button
-          label="3D"
-          icon="icon-[tabler--cube] text-base!"
-          severity="contrast"
-          :text="viewMode !== '3D'"
-          size="small"
-          @click="viewMode = '3D'"
-        />
-        <Button
-          label="2D"
-          icon="icon-[tabler--align-box-center-middle] text-base!"
-          severity="contrast"
-          :text="viewMode !== '2D'"
-          size="small"
-          @click="viewMode = '2D'"
-        />
-      </div>
-    </div>
-
-    <div
-      v-if="viewMode === '2D' && selectedBuilding"
-      class="absolute right-2 top-1/2 -translate-y-1/2 z-2"
-    >
-      <div
-        class="group/floor-list flex flex-col gap-2 p-2 max-h-56 w-12 hover:w-48 bg-surface-900 rounded-md transform-all duration-200 hover:overflow-y-auto pointer-events-auto"
-      >
-        <Button
-          v-for="item in store.getFloorsByBuildingId(selectedBuilding.id)"
-          :key="item.id"
-          :label="item.name"
-          icon="icon-[tabler--layout-board]"
-          :severity="selectedFloor?.id === item.id ? 'contrast' : 'secondary'"
-          @click="selectedFloor = item"
-          :pt="{
-            root: 'shrink-0! flex! justify-start! py-0.5!',
-            label: 'hidden group-hover/floor-list:block',
-            icon: 'hidden group-hover/floor-list:block',
-          }"
-        />
-      </div>
     </div>
   </div>
 </template>
