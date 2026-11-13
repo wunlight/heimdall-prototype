@@ -3,6 +3,39 @@ import { useSpatialCache } from '@/features/monitoring/stores/spatial.cache'
 import { loadFloorsByBuildingId } from '@/features/spatial-viewer/services/spatial.service'
 import type { Device, Floor } from '@/shared/types/entity.type'
 
+const loadFloorDimensions = async (floor: Floor): Promise<Floor> => {
+  if (floor.blueprint_width && floor.blueprint_height) {
+    return floor
+  }
+
+  return new Promise((resolve) => {
+    if (!floor.blueprint_url) {
+      resolve({ ...floor, blueprint_width: 1, blueprint_height: 1 })
+      return
+    }
+
+    const img = new Image()
+    img.src = floor.blueprint_url
+
+    img.onload = () => {
+      resolve({
+        ...floor,
+        blueprint_width: img.naturalWidth || 1,
+        blueprint_height: img.naturalHeight || 1,
+      })
+    }
+
+    img.onerror = () => {
+      console.warn(`Gagal memuat dimensi gambar untuk floor: ${floor.id}`)
+      resolve({
+        ...floor,
+        blueprint_width: 40,
+        blueprint_height: 30,
+      })
+    }
+  })
+}
+
 export const preLoadBuildings = async (updateMsg: (msg: string) => void) => {
   updateMsg('Fetching buildings')
   const buildings = await getAllBuildings()
@@ -24,7 +57,10 @@ export const preLoadBuildings = async (updateMsg: (msg: string) => void) => {
     let floors: Floor[] = []
 
     if (!store.hasCachedFloors(building.id)) {
-      floors = await loadFloorsByBuildingId(building.id)
+      const rawFloors = await loadFloorsByBuildingId(building.id)
+      updateMsg(`Loading blueprint dimensions for: ${building.name}`)
+
+      floors = await Promise.all(rawFloors.map((floor) => loadFloorDimensions(floor)))
       store.setCachedFloors(building.id, floors)
     } else {
       floors = store.getFloorsByBuildingId(building.id)

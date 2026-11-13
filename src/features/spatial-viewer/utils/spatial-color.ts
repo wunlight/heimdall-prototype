@@ -1,14 +1,23 @@
-import type { StatusType } from '@/shared/types/entity.type'
-
-const SPATIAL_STATUS_COLORS: Record<StatusType, string> = {
-  NORMAL: '#62748E',
-  TROUBLE: '#EAB308',
-  ALARM: '#EF4444',
+export function resolveDeviceColor(status?: string): string {
+  switch (status) {
+    case 'ALARM':
+      return '#EF4444'
+    case 'TROUBLE':
+      return '#EAB308'
+    case 'NORMAL':
+    default:
+      return '#2B7FFF'
+  }
 }
 
-export function resolveSpatialColor(status?: string | null): string {
-  if (!status || !(status in SPATIAL_STATUS_COLORS)) {
-    return SPATIAL_STATUS_COLORS.NORMAL!
+export function resolveFloorColor(status?: string): string {
+  switch (status) {
+    case 'ALARM':
+      return '#EF4444'
+    case 'TROUBLE':
+      return '#EAB308'
+    case 'NORMAL':
+    default:
+      return '#62748E'
   }
-  return SPATIAL_STATUS_COLORS[status as StatusType]!
 }

@@ -224,16 +224,18 @@ export function useBuildingCamera(
   function resolveAbsoluteState(payload: BuildingCameraPayload): BuildingCameraState {
     const actualState = readCurrentState()
 
-    return {
-      target: payload.target ? { ...payload.target } : { ...DEFAULT_3D_VALUES.target },
+    const target = payload.target ? { ...payload.target } : { ...DEFAULT_3D_VALUES.target }
 
+    return {
+      target,
       azimuth:
         payload.azimuth !== undefined
           ? getNearestAzimuth(actualState.azimuth, payload.azimuth)
-          : actualState.azimuth,
-
+          : getNearestAzimuth(
+              actualState.azimuth,
+              Math.atan2(target.x - actualState.target.x, target.z - actualState.target.z),
+            ),
       elevation: LOCKED_ELEVATION,
-
       distance: payload.distance !== undefined ? payload.distance : DEFAULT_3D_VALUES.distance,
     }
   }
