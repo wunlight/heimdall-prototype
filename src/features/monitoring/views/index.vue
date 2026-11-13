@@ -29,68 +29,62 @@ function selectBuilding(building: Building) {
 }
 
 function createCommandId(): string {
-  return `monitoring-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  return `monitoring-${Date.now()}-${crypto.randomUUID()}`
 }
 
 async function dispatchSpatialCommand(command: SpatialCommand): Promise<void> {
   const viewer = spatialViewerRef.value
-
   if (!viewer) {
     throw new Error('SpatialViewer is not initialized')
   }
-
-  const accepted = await viewer.executeSpatialCommand(command)
-
-  if (!accepted) {
-    throw new Error(`Spatial command failed: ${command.type}`)
-  }
-}
-
-async function dispatchDeviceColor(
-  buildingId: string,
-  floorId: string,
-  deviceId: string,
-  color: string,
-): Promise<void> {
-  await dispatchSpatialCommand({
-    id: createCommandId(),
-    timestamp: Date.now(),
-    source: 'WEBSOCKET',
-    type: 'DEVICE_COLOR',
-    context: {
-      buildingId,
-      floorId,
-      deviceId,
-    },
-    payload: { color },
-  })
-}
-
-async function dispatchFloorColor(
-  buildingId: string,
-  floorId: string,
-  color: string,
-): Promise<void> {
-  await dispatchSpatialCommand({
-    id: createCommandId(),
-    timestamp: Date.now(),
-    source: 'WEBSOCKET',
-    type: 'FLOOR_COLOR',
-    context: {
-      buildingId,
-      floorId,
-    },
-    payload: { color },
-  })
+  await viewer.executeSpatialCommand(command)
 }
 
 const processor = useEventProcessor({
   devices: store.cachedDevices,
   floors: store.cachedFloors,
-  updateDeviceStatus: (deviceId, status) => {},
-  updateFloorStatus: (floorId, status) => {},
-  dispatchDeviceColor,
-  dispatchFloorColor,
+  dispatchDeviceColor: async (buildingId, floorId, deviceId, color) => {
+    await dispatchSpatialCommand({
+      id: createCommandId(),
+      timestamp: Date.now(),
+      source: 'WEBSOCKET',
+      type: 'DEVICE_COLOR',
+      context: {
+        buildingId,
+        floorId,
+        deviceId,
+      },
+      payload: { color },
+    })
+  },
+  dispatchFloorColor: async (buildingId, floorId, color) => {
+    await dispatchSpatialCommand({
+      id: createCommandId(),
+      timestamp: Date.now(),
+      source: 'WEBSOCKET',
+      type: 'FLOOR_COLOR',
+      context: {
+        buildingId,
+        floorId,
+      },
+      payload: { color },
+    })
+  },
+  dispatchDeviceCamera: async (buildingId, floorId, deviceId, worldTarget) => {
+    await dispatchSpatialCommand({
+      id: createCommandId(),
+      timestamp: Date.now(),
+      source: 'WEBSOCKET',
+      type: 'BUILDING_CAMERA',
+      movement: 'ABSOLUTE',
+      context: { buildingId, floorId, deviceId },
+      payload: {
+        target: worldTarget,
+        distance: 48,
+        duration: 1000,
+      },
+    })
+  },
 })
 
 let unsubscribe: (() => void) | undefined
