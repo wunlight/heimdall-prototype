@@ -5,7 +5,7 @@ import { useSpatialCommandQueue } from '@/features/spatial-viewer/composables/us
 import type { GeoCoordinate, Vector3 } from '@/features/spatial-viewer/types/camera.type.ts'
 import type { SpatialCommand, SpatialViewMode } from '@/features/spatial-viewer/types/spatial.type'
 import type { Building, Device, Floor } from '@/shared/types/entity.type'
-import { nextTick, onMounted, onUnmounted, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef } from 'vue'
 import SimulationDialog from '../components/simulation-dialog.vue'
 import { useEventProcessor } from '../composables/event-processor.ts'
 import { mockWS } from '../services/mock-ws.service.ts'
@@ -19,6 +19,8 @@ const spatialViewerRef = useTemplateRef('spatial-viewer')
 const viewMode = ref<SpatialViewMode>('3D')
 const selectedBuilding = ref<Building | null>(null)
 const selectedFloor = ref<Floor | null>(null)
+
+const activeDevices = computed(() => store.getAbnormalDevices())
 
 function selectBuilding(building: Building) {
   selectedBuilding.value = building
@@ -181,6 +183,20 @@ onUnmounted(() => {
           class="shrink-0 justify-start!"
           @click="selectBuilding(item)"
         />
+      </div>
+    </div>
+
+    <div class="absolute left-3 bottom-3 z-1">
+      <div
+        class="flex flex-col p-2 max-h-56 w-lg bg-surface-900 rounded-md overflow-y-auto pointer-events-auto"
+      >
+        <p class="text-surface-500 text-sm">Active Devices</p>
+        <Divider class="my-2!" />
+        <div class="flex flex-col gap-2 h-full overflow-y-auto">
+          <div v-for="item in activeDevices" :key="item.id">
+            {{ item.status }} - {{ item.type }}
+          </div>
+        </div>
       </div>
     </div>
 

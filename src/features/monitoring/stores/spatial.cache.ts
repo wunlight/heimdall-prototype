@@ -97,6 +97,14 @@ export const useSpatialCache = defineStore('spatial-cache', {
 
         return buildingStatus
       },
+
+    getAbnormalDevices: (state) => (): Device[] => {
+      const devices: Device[] = []
+      for (const floorDevices of state.cachedDevices.values()) {
+        devices.push(...floorDevices)
+      }
+      return devices.filter((device) => device.status === 'ALARM' || device.status === 'TROUBLE')
+    },
   },
 
   actions: {
