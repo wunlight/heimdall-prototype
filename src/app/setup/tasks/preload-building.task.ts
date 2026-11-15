@@ -4,10 +4,6 @@ import { loadFloorsByBuildingId } from '@/features/spatial-viewer/services/spati
 import type { Device, Floor } from '@/shared/types/entity.type'
 
 const loadFloorDimensions = async (floor: Floor): Promise<Floor> => {
-  if (floor.blueprint_width && floor.blueprint_height) {
-    return floor
-  }
-
   return new Promise((resolve) => {
     if (!floor.blueprint_url) {
       resolve({ ...floor, blueprint_width: 1, blueprint_height: 1 })
@@ -20,8 +16,8 @@ const loadFloorDimensions = async (floor: Floor): Promise<Floor> => {
     img.onload = () => {
       resolve({
         ...floor,
-        blueprint_width: img.naturalWidth || 1,
-        blueprint_height: img.naturalHeight || 1,
+        blueprint_width: img.naturalWidth,
+        blueprint_height: img.naturalHeight,
       })
     }
 
@@ -29,8 +25,8 @@ const loadFloorDimensions = async (floor: Floor): Promise<Floor> => {
       console.warn(`Gagal memuat dimensi gambar untuk floor: ${floor.id}`)
       resolve({
         ...floor,
-        blueprint_width: 40,
-        blueprint_height: 30,
+        blueprint_width: 1,
+        blueprint_height: 1,
       })
     }
   })

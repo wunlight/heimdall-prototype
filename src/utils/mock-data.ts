@@ -1,7 +1,6 @@
 import type { Building, Device, Event, Floor, StatusType } from '@/shared/types/entity.type'
 
 export function generateMockData(numBuildings = 2, floorsPerBuilding = 3, devicesPerFloor = 4) {
-  const buildings: Building[] = []
   const floors: Floor[] = []
   const devices: Device[] = []
   const events: Event[] = []
@@ -10,14 +9,31 @@ export function generateMockData(numBuildings = 2, floorsPerBuilding = 3, device
   const baseLng = 106.8456
   const deviceTypes = ['SMOKE_DETECTOR', 'HEAT_DETECTOR', 'MANUAL_CALL_POINT', 'GAS_DETECTOR']
 
-  for (let b = 1; b <= numBuildings; b++) {
-    const bId = `bldg-${b}`
-    buildings.push({
-      id: bId,
-      name: `Central Building ${String.fromCharCode(64 + b)}`,
-      lat: Number((baseLat + b * 0.002).toFixed(6)),
-      lng: Number((baseLng + b * 0.002).toFixed(6)),
-    })
+  const nordicRealms = [
+    'Midgard',
+    'Asgard',
+    'Jotunheim',
+    'Niflheim',
+    'Muspelheim',
+    'Vanaheim',
+    'Alfheim',
+    'Svartalfheim',
+    'Helheim',
+  ]
+
+  const buildings: Building[] = nordicRealms.map((realm, index) => {
+    const bNum = index + 1
+    return {
+      id: `bldg-${bNum}`,
+      name: `Building ${realm}`,
+      lat: Number((baseLat + (index % 3) * 0.002).toFixed(6)),
+      lng: Number((baseLng + Math.floor(index / 3) * 0.002).toFixed(6)),
+    }
+  })
+
+  buildings.forEach((building, index) => {
+    const b = index + 1
+    const bId = building.id
 
     for (let f = 1; f <= floorsPerBuilding; f++) {
       const fId = `flr-${b}-${f}`
@@ -60,7 +76,7 @@ export function generateMockData(numBuildings = 2, floorsPerBuilding = 3, device
         }
       }
     }
-  }
+  })
 
   return { buildings, floors, devices, events }
 }

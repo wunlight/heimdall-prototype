@@ -1,5 +1,5 @@
-import { circleMarker, type Map as LMap } from 'leaflet'
-import { ref, shallowRef } from 'vue'
+import { type Map as LMap } from 'leaflet'
+import { ref } from 'vue'
 import type { FloorCameraPayload, GeoCoordinate } from '../../types/camera.type'
 
 export interface FloorCameraState {
@@ -140,47 +140,6 @@ export function useFloorCamera(mapInstance: LMap | null) {
     await animateToState(targetState, duration, signal)
   }
 
-  const activeCircles = shallowRef(new Map())
-
-  function setDeviceCircle(
-    id: string,
-    latLng: [number, number],
-    options: { radius: number; color: string; fillColor: string; fillOpacity: number },
-  ) {
-    if (!mapInstance) return
-
-    const circles = new Map(activeCircles.value)
-    let circle = circles.get(id)
-
-    if (circle) {
-      circle.setLatLng(latLng)
-      circle.setStyle(options)
-    } else {
-      circle = circleMarker(latLng, {
-        ...options,
-        className: 'fire-pulse-circle',
-      }).addTo(mapInstance)
-      circles.set(id, circle)
-    }
-
-    activeCircles.value = circles
-  }
-
-  function removeDeviceCircle(id: string) {
-    const circles = new Map(activeCircles.value)
-    const circle = circles.get(id)
-    if (circle) {
-      circle.remove()
-      circles.delete(id)
-      activeCircles.value = circles
-    }
-  }
-
-  function clearAllCircles() {
-    activeCircles.value.forEach((circle) => circle.remove())
-    activeCircles.value = new Map()
-  }
-
   function cancelAnimation() {
     if (!mapInstance) return
 
@@ -207,8 +166,5 @@ export function useFloorCamera(mapInstance: LMap | null) {
     dispose,
     currentState,
     isAnimating,
-    setDeviceCircle,
-    removeDeviceCircle,
-    clearAllCircles,
   }
 }

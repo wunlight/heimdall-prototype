@@ -1,20 +1,26 @@
 <script setup lang="ts">
 import SpatialViewer from '@/features/spatial-viewer/components/spatial-viewer.vue'
+import { useDeviceMarkerSynchronizer } from '@/features/spatial-viewer/composables/use-device-marker-synchronizer'
+import { useSpatialCommandQueue } from '@/features/spatial-viewer/composables/use-spatial-command-queue'
+import type { GeoCoordinate, Vector3 } from '@/features/spatial-viewer/types/camera.type.ts'
 import type { SpatialCommand, SpatialViewMode } from '@/features/spatial-viewer/types/spatial.type'
-import type { Building, Floor } from '@/shared/types/entity.type'
-import { onMounted, onUnmounted, ref, useTemplateRef } from 'vue'
+import type { Building, Device, Floor } from '@/shared/types/entity.type'
+import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef } from 'vue'
 import SimulationDialog from '../components/simulation-dialog.vue'
 import { useEventProcessor } from '../composables/event-processor.ts'
 import { mockWS } from '../services/mock-ws.service.ts'
 import { useSpatialCache } from '../stores/spatial.cache'
 
 const store = useSpatialCache()
+const { enqueueCommand } = useSpatialCommandQueue()
 
 const spatialViewerRef = useTemplateRef('spatial-viewer')
 
 const viewMode = ref<SpatialViewMode>('3D')
 const selectedBuilding = ref<Building | null>(null)
 const selectedFloor = ref<Floor | null>(null)
+
+const activeDevices = computed(() => store.getAbnormalDevices())
 
 function selectBuilding(building: Building) {
   selectedBuilding.value = building
@@ -26,10 +32,28 @@ function selectBuilding(building: Building) {
     selectedFloor.value =
       floors.find((floor) => floor.id === selectedFloor.value?.id) ?? floors[0] ?? null
   }
+
+  initializeBuildingMarkerStates(building.id)
 }
 
 function createCommandId(): string {
   return `monitoring-${Date.now()}-${crypto.randomUUID()}`
+}
+
+async function initializeBuildingMarkerStates(buildingId: string): Promise<void> {
+  const floors = store.getFloorsByBuildingId(buildingId)
+
+  const allDevices: Device[] = []
+  for (const floor of floors) {
+    const floorDevices = store.getDevicesByFloorId(floor.id) ?? []
+    allDevices.push(...floorDevices)
+  }
+
+  const synchronizer = useDeviceMarkerSynchronizer(buildingId, allDevices, {
+    enqueueCommand,
+  } as any)
+
+  await synchronizer.initializeMarkerStates()
 }
 
 async function dispatchSpatialCommand(command: SpatialCommand): Promise<void> {
@@ -58,48 +82,72 @@ const processor = useEventProcessor({
     })
   },
   dispatchFloorColor: async (buildingId, floorId, color) => {
-    await dispatchSpatialCommand({
-      id: createCommandId(),
-      timestamp: Date.now(),
-      source: 'WEBSOCKET',
-      type: 'FLOOR_COLOR',
-      context: {
-        buildingId,
-        floorId,
-      },
-      payload: { color },
-    })
+    if (viewMode.value === '3D') {
+      await dispatchSpatialCommand({
+        id: createCommandId(),
+        timestamp: Date.now(),
+        source: 'WEBSOCKET',
+        type: 'FLOOR_COLOR',
+        context: {
+          buildingId,
+          floorId,
+        },
+        payload: { color },
+      })
+    }
   },
   dispatchDeviceCamera: async (buildingId, floorId, deviceId, worldTarget) => {
-    await dispatchSpatialCommand({
-      id: createCommandId(),
-      timestamp: Date.now(),
-      source: 'WEBSOCKET',
-      type: 'BUILDING_CAMERA',
-      movement: 'ABSOLUTE',
-      context: { buildingId, floorId, deviceId },
-      payload: {
-        target: worldTarget,
-        distance: 48,
-        duration: 1000,
-      },
-    })
+    if (viewMode.value === '3D') {
+      await dispatchSpatialCommand({
+        id: createCommandId(),
+        timestamp: Date.now(),
+        source: 'WEBSOCKET',
+        type: 'BUILDING_CAMERA',
+        movement: 'ABSOLUTE',
+        context: { buildingId, floorId, deviceId },
+        payload: {
+          target: worldTarget as Vector3,
+          distance: 48,
+          duration: 1000,
+        },
+      })
+    } else if (viewMode.value === '2D') {
+      await dispatchSpatialCommand({
+        id: createCommandId(),
+        timestamp: Date.now(),
+        source: 'WEBSOCKET',
+        type: 'FLOOR_CAMERA',
+        movement: 'ABSOLUTE',
+        context: { buildingId, floorId, deviceId },
+        payload: {
+          center: worldTarget as GeoCoordinate,
+          zoom: 2,
+          duration: 1000,
+        },
+      })
+    }
   },
 })
 
 let unsubscribe: (() => void) | undefined
 let eventProcessing = Promise.resolve()
 
-function handleIncomingEvent(event: Parameters<typeof processor.processEvent>[0]) {
+const handleIncomingEvent = (event: Parameters<typeof processor.processEvent>[0]) => {
   eventProcessing = eventProcessing
-    .then(() => processor.processEvent(event))
+    .then(() => processor.processEvent(event, viewMode.value))
     .catch((error) => {
       console.error('Failed to process monitoring event:', error)
     })
 }
 
+const onSpatialReady = async () => {
+  await nextTick()
+  if (store.buildings[0]) {
+    selectBuilding(store.buildings[0])
+  }
+}
+
 onMounted(() => {
-  if (store.buildings.length > 0) selectBuilding(store.buildings[0]!)
   unsubscribe = mockWS.onMessage(handleIncomingEvent)
 })
 
@@ -119,6 +167,7 @@ onUnmounted(() => {
       v-model:selected-building="selectedBuilding"
       v-model:selected-floor="selectedFloor"
       class="relative z-0"
+      @vue:mounted="onSpatialReady"
     />
 
     <div class="absolute left-3 top-3 z-1">
@@ -134,6 +183,20 @@ onUnmounted(() => {
           class="shrink-0 justify-start!"
           @click="selectBuilding(item)"
         />
+      </div>
+    </div>
+
+    <div class="absolute left-3 bottom-3 z-1">
+      <div
+        class="flex flex-col p-2 max-h-56 w-lg bg-surface-900 rounded-md overflow-y-auto pointer-events-auto"
+      >
+        <p class="text-surface-500 text-sm">Active Devices</p>
+        <Divider class="my-2!" />
+        <div class="flex flex-col gap-2 h-full overflow-y-auto">
+          <div v-for="item in activeDevices" :key="item.id">
+            {{ item.status }} - {{ item.type }}
+          </div>
+        </div>
       </div>
     </div>
 

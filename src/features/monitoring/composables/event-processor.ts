@@ -1,4 +1,5 @@
-import type { Vector3 } from '@/features/spatial-viewer/types/camera.type'
+import type { GeoCoordinate, Vector3 } from '@/features/spatial-viewer/types/camera.type'
+import type { SpatialViewMode } from '@/features/spatial-viewer/types/spatial.type'
 import {
   resolveDeviceColor,
   resolveFloorColor,
@@ -19,12 +20,12 @@ interface ProcessorOptions {
     buildingId: string,
     floorId: string,
     deviceId: string,
-    worldTarget: Vector3,
+    worldTarget: Vector3 | GeoCoordinate,
   ) => Promise<void>
 }
 
 export function useEventProcessor(options: ProcessorOptions) {
-  async function processEvent(event: Event): Promise<void> {
+  async function processEvent(event: Event, viewMode: SpatialViewMode): Promise<void> {
     let targetDevice: Device | undefined
     let targetFloor: Floor | undefined
     let targetBuildingId: string | undefined
@@ -59,34 +60,41 @@ export function useEventProcessor(options: ProcessorOptions) {
       targetBuildingId,
       targetFloor.id,
       targetDevice.id,
-      resolveDeviceColor(newStatus),
+      viewMode === '2D' && newStatus === 'NORMAL' ? 'transparent' : resolveDeviceColor(newStatus),
     )
 
     await options.dispatchFloorColor(targetBuildingId, targetFloor.id, resolveFloorColor(newStatus))
 
-    const blueprintWidth = targetFloor.blueprint_width
-    const blueprintHeight = targetFloor.blueprint_height
-    const aspectRatio = blueprintWidth / blueprintHeight
+    let cameraTarget: Vector3 | GeoCoordinate
 
-    const planeWidth = 40
-    const planeDepth = 40 / aspectRatio
+    if (viewMode === '3D') {
+      const blueprintWidth = targetFloor.blueprint_width
+      const blueprintHeight = targetFloor.blueprint_height
+      const aspectRatio = blueprintWidth / blueprintHeight
 
-    const worldX = (targetDevice.x - 0.5) * planeWidth
-    const worldZ = (targetDevice.y - 0.5) * planeDepth
+      const planeWidth = 40
+      const planeDepth = 40 / aspectRatio
 
-    const worldY = (floorIndex !== -1 ? floorIndex : 0) * 16
+      const worldX = (targetDevice.x - 0.5) * planeWidth
+      const worldZ = (targetDevice.y - 0.5) * planeDepth
+      const worldY = (floorIndex !== -1 ? floorIndex : 0) * 16
 
-    const worldTarget: Vector3 = {
-      x: worldX,
-      y: worldY,
-      z: worldZ,
+      cameraTarget = { x: worldX, y: worldY, z: worldZ }
+    } else {
+      const width = targetFloor.blueprint_width
+      const height = targetFloor.blueprint_height
+
+      const px = targetDevice.x * width
+      const py = (1 - targetDevice.y) * height
+
+      cameraTarget = { lat: py, lng: px }
     }
 
     await options.dispatchDeviceCamera(
       targetBuildingId,
       targetFloor.id,
       targetDevice.id,
-      worldTarget,
+      cameraTarget,
     )
   }
 
