@@ -11,11 +11,13 @@ interface QueueItem {
   abortController?: AbortController
 }
 
-export function useSpatialCommandQueue() {
-  const queue = ref<QueueItem[]>([])
-  const currentCommand = ref<QueueItem | null>(null)
-  const isProcessing = ref(false)
+const isViewerReady = ref(false)
+let commandExecutor: ((command: SpatialCommand, signal: AbortSignal) => Promise<void>) | null = null
+const queue = ref<QueueItem[]>([])
+const currentCommand = ref<QueueItem | null>(null)
+const isProcessing = ref(false)
 
+export function useSpatialCommandQueue() {
   function isValidBuildingCameraPayload(payload: BuildingCameraPayload): boolean {
     if (payload.target && !isValidVector3(payload.target)) return false
     if (payload.azimuth !== undefined && !Number.isFinite(payload.azimuth)) return false
@@ -202,6 +204,7 @@ export function useSpatialCommandQueue() {
   async function processQueue() {
     if (isProcessing.value) return
     if (queue.value.length === 0) return
+    if (!isViewerReady.value) return
 
     isProcessing.value = true
 
@@ -245,9 +248,6 @@ export function useSpatialCommandQueue() {
     }
   }
 
-  let commandExecutor: ((command: SpatialCommand, signal: AbortSignal) => Promise<void>) | null =
-    null
-
   function setCommandExecutor(
     executor: (command: SpatialCommand, signal: AbortSignal) => Promise<void>,
   ) {
@@ -288,6 +288,13 @@ export function useSpatialCommandQueue() {
     }
   }
 
+  async function setViewerReady(ready: boolean) {
+    isViewerReady.value = ready
+    if (ready && queue.value.length > 0) {
+      await processQueue()
+    }
+  }
+
   return {
     enqueueCommand,
     clearQueue,
@@ -296,5 +303,6 @@ export function useSpatialCommandQueue() {
     queue,
     currentCommand,
     isProcessing,
+    setViewerReady,
   }
 }

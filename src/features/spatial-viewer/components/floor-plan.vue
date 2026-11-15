@@ -4,10 +4,13 @@ import { LCircle, LImageOverlay, LMap, LMarker, LTooltip } from '@vue-leaflet/vu
 import { CRS, type LatLngBoundsExpression, type Map as LfMap, type PointExpression } from 'leaflet'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useFloorCamera } from '../composables/camera-control/floor-camera'
+import { useDeviceMarkerStateStore } from '../stores/device-marker-state.store'
 
 type Props = {
   blueprintUrl: string
   devices: Device[]
+  floorId?: string
+  buildingId?: string
 }
 const props = defineProps<Props>()
 
@@ -27,7 +30,7 @@ const minZoom = -5
 const maxZoom = 5
 const imageSize = ref({ height: 0, width: 0 })
 
-const deviceColors = ref(new Map())
+const markerStore = useDeviceMarkerStateStore()
 
 const bounds = computed<LatLngBoundsExpression>(() => [
   [imageSize.value.height, 0],
@@ -41,7 +44,7 @@ const deviceMarkers = computed(() => {
   return props.devices.map((device) => {
     const x = device.x * width
     const y = (1 - device.y) * height
-    const circleColor = deviceColors.value.get(device.id) || 'transparent'
+    const circleColor = markerStore.getDeviceMarkerColor(device.id)
     return {
       ...device,
       latLng: [y, x] as [number, number],
@@ -74,10 +77,8 @@ const onImageLoad = (event: any) => {
 }
 
 const setDeviceMarkerColor = (deviceId: string, color: string): boolean => {
-  const newColors = new Map(deviceColors.value)
-  newColors.set(deviceId, color)
-  deviceColors.value = newColors
-  return true
+  const success = markerStore.updateDeviceMarkerColor(deviceId, color)
+  return success
 }
 
 onBeforeUnmount(() => {

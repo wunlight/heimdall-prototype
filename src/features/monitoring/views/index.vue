@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import SpatialViewer from '@/features/spatial-viewer/components/spatial-viewer.vue'
+import { useDeviceMarkerSynchronizer } from '@/features/spatial-viewer/composables/use-device-marker-synchronizer'
+import { useSpatialCommandQueue } from '@/features/spatial-viewer/composables/use-spatial-command-queue'
 import type { GeoCoordinate, Vector3 } from '@/features/spatial-viewer/types/camera.type.ts'
 import type { SpatialCommand, SpatialViewMode } from '@/features/spatial-viewer/types/spatial.type'
-import type { Building, Floor } from '@/shared/types/entity.type'
-import { onMounted, onUnmounted, ref, useTemplateRef } from 'vue'
+import type { Building, Device, Floor } from '@/shared/types/entity.type'
+import { nextTick, onMounted, onUnmounted, ref, useTemplateRef } from 'vue'
 import SimulationDialog from '../components/simulation-dialog.vue'
 import { useEventProcessor } from '../composables/event-processor.ts'
 import { mockWS } from '../services/mock-ws.service.ts'
 import { useSpatialCache } from '../stores/spatial.cache'
 
 const store = useSpatialCache()
+const { enqueueCommand } = useSpatialCommandQueue()
 
 const spatialViewerRef = useTemplateRef('spatial-viewer')
 
@@ -27,10 +30,28 @@ function selectBuilding(building: Building) {
     selectedFloor.value =
       floors.find((floor) => floor.id === selectedFloor.value?.id) ?? floors[0] ?? null
   }
+
+  initializeBuildingMarkerStates(building.id)
 }
 
 function createCommandId(): string {
   return `monitoring-${Date.now()}-${crypto.randomUUID()}`
+}
+
+async function initializeBuildingMarkerStates(buildingId: string): Promise<void> {
+  const floors = store.getFloorsByBuildingId(buildingId)
+
+  const allDevices: Device[] = []
+  for (const floor of floors) {
+    const floorDevices = store.getDevicesByFloorId(floor.id) ?? []
+    allDevices.push(...floorDevices)
+  }
+
+  const synchronizer = useDeviceMarkerSynchronizer(buildingId, allDevices, {
+    enqueueCommand,
+  } as any)
+
+  await synchronizer.initializeMarkerStates()
 }
 
 async function dispatchSpatialCommand(command: SpatialCommand): Promise<void> {
@@ -109,7 +130,7 @@ const processor = useEventProcessor({
 let unsubscribe: (() => void) | undefined
 let eventProcessing = Promise.resolve()
 
-function handleIncomingEvent(event: Parameters<typeof processor.processEvent>[0]) {
+const handleIncomingEvent = (event: Parameters<typeof processor.processEvent>[0]) => {
   eventProcessing = eventProcessing
     .then(() => processor.processEvent(event, viewMode.value))
     .catch((error) => {
@@ -117,8 +138,14 @@ function handleIncomingEvent(event: Parameters<typeof processor.processEvent>[0]
     })
 }
 
+const onSpatialReady = async () => {
+  await nextTick()
+  if (store.buildings[0]) {
+    selectBuilding(store.buildings[0])
+  }
+}
+
 onMounted(() => {
-  if (store.buildings.length > 0) selectBuilding(store.buildings[0]!)
   unsubscribe = mockWS.onMessage(handleIncomingEvent)
 })
 
@@ -138,6 +165,7 @@ onUnmounted(() => {
       v-model:selected-building="selectedBuilding"
       v-model:selected-floor="selectedFloor"
       class="relative z-0"
+      @vue:mounted="onSpatialReady"
     />
 
     <div class="absolute left-3 top-3 z-1">

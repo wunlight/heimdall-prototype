@@ -4,6 +4,7 @@ import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useBuildingRenderer } from '../composables/building/renderer'
 import { useBuildingScene } from '../composables/building/scene'
 import { useBuildingCamera } from '../composables/camera-control/building-camera'
+import { useDeviceMarkerStateStore } from '../stores/device-marker-state.store'
 
 type Props = {
   buildingId: string
@@ -33,6 +34,8 @@ const {
 let rendererController: ReturnType<typeof useBuildingRenderer> | null = null
 
 const isSceneLoading = ref(false)
+
+const markerStore = useDeviceMarkerStateStore()
 
 const attachCachedScene = (buildingId: string) => {
   if (!rendererController) return
@@ -114,6 +117,27 @@ watch(
     }
   },
   { immediate: false, deep: true },
+)
+
+watch(
+  () => markerStore.markerColorMap,
+  (newColorMap) => {
+    if (!props.buildingId) return
+
+    Object.entries(newColorMap).forEach(([deviceId, color]) => {
+      let floorId: string | null = null
+      props.devicesByFloor.forEach((devices, fId) => {
+        if (devices.find((d) => d.id === deviceId)) {
+          floorId = fId
+        }
+      })
+
+      if (floorId) {
+        setDeviceMarkerColor(props.buildingId, floorId, deviceId, color)
+      }
+    })
+  },
+  { deep: true },
 )
 
 defineExpose({
