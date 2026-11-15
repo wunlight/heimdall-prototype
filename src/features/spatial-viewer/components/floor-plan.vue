@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Device } from '@/shared/types/entity.type'
-import { LImageOverlay, LMap, LMarker, LTooltip } from '@vue-leaflet/vue-leaflet'
-import { CRS, Map, type LatLngBoundsExpression, type PointExpression } from 'leaflet'
+import { LCircle, LImageOverlay, LMap, LMarker, LTooltip } from '@vue-leaflet/vue-leaflet'
+import { CRS, type LatLngBoundsExpression, type Map as LfMap, type PointExpression } from 'leaflet'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useFloorCamera } from '../composables/camera-control/floor-camera'
 
@@ -17,15 +17,17 @@ type Emit = {
 }
 const emit = defineEmits<Emit>()
 
-let camera2DController: ReturnType<typeof useFloorCamera> | null = null
+let cameraController: ReturnType<typeof useFloorCamera> | null = null
 
-const mapInstance = ref<Map | null>(null)
+const mapInstance = ref<LfMap | null>(null)
 const crs = CRS.Simple
 const center = ref<PointExpression>([0, 0])
 const zoom = ref<number>(0)
 const minZoom = -5
 const maxZoom = 5
 const imageSize = ref({ height: 0, width: 0 })
+
+const deviceColors = ref(new Map())
 
 const bounds = computed<LatLngBoundsExpression>(() => [
   [imageSize.value.height, 0],
@@ -39,18 +41,19 @@ const deviceMarkers = computed(() => {
   return props.devices.map((device) => {
     const x = device.x * width
     const y = (1 - device.y) * height
-
+    const circleColor = deviceColors.value.get(device.id) || 'transparent'
     return {
       ...device,
       latLng: [y, x] as [number, number],
+      circleColor,
     }
   })
 })
 
-const onMapReady = (instance: Map) => {
+const onMapReady = (instance: LfMap) => {
   mapInstance.value = instance
-  camera2DController = useFloorCamera(instance)
-  emit('controller-ready', camera2DController)
+  cameraController = useFloorCamera(instance)
+  emit('controller-ready', cameraController)
 }
 
 const onImageLoad = (event: any) => {
@@ -70,10 +73,17 @@ const onImageLoad = (event: any) => {
   }
 }
 
+const setDeviceMarkerColor = (deviceId: string, color: string): boolean => {
+  const newColors = new Map(deviceColors.value)
+  newColors.set(deviceId, color)
+  deviceColors.value = newColors
+  return true
+}
+
 onBeforeUnmount(() => {
   emit('controller-disposed')
-  camera2DController?.dispose()
-  camera2DController = null
+  cameraController?.dispose()
+  cameraController = null
 })
 
 watch(
@@ -82,6 +92,10 @@ watch(
     imageSize.value = { height: 0, width: 0 }
   },
 )
+
+defineExpose({
+  setDeviceMarkerColor,
+})
 </script>
 
 <template>
@@ -96,8 +110,20 @@ watch(
     @ready="onMapReady"
   >
     <LImageOverlay :url="blueprintUrl" :bounds @load="onImageLoad" />
-    <LMarker v-for="device in deviceMarkers" :key="device.id" :lat-lng="device.latLng">
-      <LTooltip>{{ device.type }} - {{ device.status }}</LTooltip>
-    </LMarker>
+
+    <template v-for="device in deviceMarkers" :key="device.id">
+      <LCircle
+        :lat-lng="device.latLng"
+        :radius="100"
+        :color="device.circleColor"
+        :fill-color="device.circleColor"
+        :fill-opacity="device.circleColor !== 'transparent' ? 0.3 : 0"
+        :weight="device.circleColor !== 'transparent' ? 2 : 0"
+      />
+
+      <LMarker :lat-lng="device.latLng">
+        <LTooltip>{{ device.type }} - {{ device.status }}</LTooltip>
+      </LMarker>
+    </template>
   </LMap>
 </template>

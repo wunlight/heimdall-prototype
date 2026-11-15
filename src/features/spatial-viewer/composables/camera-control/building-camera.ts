@@ -192,16 +192,11 @@ export function useBuildingCamera(
         const interpolatedState: BuildingCameraState = {
           target: {
             x: startState.target.x + (targetState.target.x - startState.target.x) * eased,
-
             y: startState.target.y + (targetState.target.y - startState.target.y) * eased,
-
             z: startState.target.z + (targetState.target.z - startState.target.z) * eased,
           },
-
           azimuth: startState.azimuth + azimuthDelta * eased,
-
           elevation: LOCKED_ELEVATION,
-
           distance: startState.distance + (targetState.distance - startState.distance) * eased,
         }
 

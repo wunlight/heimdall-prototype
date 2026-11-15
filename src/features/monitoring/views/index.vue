@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SpatialViewer from '@/features/spatial-viewer/components/spatial-viewer.vue'
+import type { GeoCoordinate, Vector3 } from '@/features/spatial-viewer/types/camera.type.ts'
 import type { SpatialCommand, SpatialViewMode } from '@/features/spatial-viewer/types/spatial.type'
 import type { Building, Floor } from '@/shared/types/entity.type'
 import { onMounted, onUnmounted, ref, useTemplateRef } from 'vue'
@@ -58,32 +59,50 @@ const processor = useEventProcessor({
     })
   },
   dispatchFloorColor: async (buildingId, floorId, color) => {
-    await dispatchSpatialCommand({
-      id: createCommandId(),
-      timestamp: Date.now(),
-      source: 'WEBSOCKET',
-      type: 'FLOOR_COLOR',
-      context: {
-        buildingId,
-        floorId,
-      },
-      payload: { color },
-    })
+    if (viewMode.value === '3D') {
+      await dispatchSpatialCommand({
+        id: createCommandId(),
+        timestamp: Date.now(),
+        source: 'WEBSOCKET',
+        type: 'FLOOR_COLOR',
+        context: {
+          buildingId,
+          floorId,
+        },
+        payload: { color },
+      })
+    }
   },
   dispatchDeviceCamera: async (buildingId, floorId, deviceId, worldTarget) => {
-    await dispatchSpatialCommand({
-      id: createCommandId(),
-      timestamp: Date.now(),
-      source: 'WEBSOCKET',
-      type: 'BUILDING_CAMERA',
-      movement: 'ABSOLUTE',
-      context: { buildingId, floorId, deviceId },
-      payload: {
-        target: worldTarget,
-        distance: 48,
-        duration: 1000,
-      },
-    })
+    if (viewMode.value === '3D') {
+      await dispatchSpatialCommand({
+        id: createCommandId(),
+        timestamp: Date.now(),
+        source: 'WEBSOCKET',
+        type: 'BUILDING_CAMERA',
+        movement: 'ABSOLUTE',
+        context: { buildingId, floorId, deviceId },
+        payload: {
+          target: worldTarget as Vector3,
+          distance: 48,
+          duration: 1000,
+        },
+      })
+    } else if (viewMode.value === '2D') {
+      await dispatchSpatialCommand({
+        id: createCommandId(),
+        timestamp: Date.now(),
+        source: 'WEBSOCKET',
+        type: 'FLOOR_CAMERA',
+        movement: 'ABSOLUTE',
+        context: { buildingId, floorId, deviceId },
+        payload: {
+          center: worldTarget as GeoCoordinate,
+          zoom: 2,
+          duration: 1000,
+        },
+      })
+    }
   },
 })
 
@@ -92,7 +111,7 @@ let eventProcessing = Promise.resolve()
 
 function handleIncomingEvent(event: Parameters<typeof processor.processEvent>[0]) {
   eventProcessing = eventProcessing
-    .then(() => processor.processEvent(event))
+    .then(() => processor.processEvent(event, viewMode.value))
     .catch((error) => {
       console.error('Failed to process monitoring event:', error)
     })

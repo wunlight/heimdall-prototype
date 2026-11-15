@@ -75,11 +75,7 @@ export function useSpatialCommandQueue() {
       typeof coord.lat === 'number' &&
       typeof coord.lng === 'number' &&
       !isNaN(coord.lat) &&
-      !isNaN(coord.lng) &&
-      coord.lat >= -90 &&
-      coord.lat <= 90 &&
-      coord.lng >= -180 &&
-      coord.lng <= 180
+      !isNaN(coord.lng)
     )
   }
 

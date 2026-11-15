@@ -23,6 +23,7 @@ const selectedBuilding = defineModel<Building | null>('selected-building', { def
 const selectedFloor = defineModel<Floor | null>('selected-floor', { default: null })
 
 const buildingModelRef = useTemplateRef('building-model-ref')
+const floorPlanRef = useTemplateRef('floor-plan-ref')
 
 const buildingCameraController = ref<ReturnType<typeof useBuildingCamera> | null>(null)
 const floorCameraController = ref<ReturnType<typeof useFloorCamera> | null>(null)
@@ -33,7 +34,7 @@ const handleBuildingCameraCommand = async (
   signal: AbortSignal,
 ): Promise<void> => {
   if (!buildingCameraController.value) {
-    console.warn('Camera 3D controller not initialized')
+    console.warn('Building camera controller not initialized')
     return
   }
 
@@ -50,7 +51,7 @@ const handleFloorCameraCommand = async (
   signal: AbortSignal,
 ): Promise<void> => {
   if (!floorCameraController.value) {
-    console.warn('Camera 2D controller not initialized')
+    console.warn('Floor camera controller not initialized')
     return
   }
 
@@ -83,14 +84,29 @@ const handleDeviceColorCommand = async (
   deviceId: string,
   color: string,
 ): Promise<void> => {
-  if (!buildingModelRef.value) {
-    return
-  }
+  if (viewMode.value === '3D') {
+    if (!buildingModelRef.value) {
+      return
+    }
 
-  const success = buildingModelRef.value.setDeviceMarkerColor(buildingId, floorId, deviceId, color)
+    const success = buildingModelRef.value.setDeviceMarkerColor(
+      buildingId,
+      floorId,
+      deviceId,
+      color,
+    )
+    if (!success) {
+      throw new Error(`Unable to update device color: ${buildingId}/${floorId}/${deviceId}`)
+    }
+  } else if (viewMode.value === '2D') {
+    if (!floorPlanRef.value) {
+      return
+    }
 
-  if (!success) {
-    throw new Error(`Unable to update device color: ${buildingId}/${floorId}/${deviceId}`)
+    const success = floorPlanRef.value.setDeviceMarkerColor(deviceId, color)
+    if (!success) {
+      throw new Error(`Unable to update device color: ${buildingId}/${floorId}/${deviceId}`)
+    }
   }
 }
 
@@ -273,6 +289,7 @@ defineExpose({
       </template>
       <template v-else-if="viewMode === '2D' && selectedFloor">
         <FloorPlan
+          ref="floor-plan-ref"
           :blueprint-url="selectedFloor.blueprint_url"
           :devices="currentDevices"
           class="pointer-events-auto"
