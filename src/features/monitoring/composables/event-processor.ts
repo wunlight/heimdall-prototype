@@ -4,6 +4,10 @@ import {
   resolveDeviceColor,
   resolveFloorColor,
 } from '@/features/spatial-viewer/utils/spatial-color'
+import {
+  calculate2DWorldTarget,
+  calculate3DWorldTarget,
+} from '@/features/spatial-viewer/utils/spatial-world'
 import type { Device, Event, Floor } from '@/shared/types/entity.type'
 
 interface ProcessorOptions {
@@ -65,30 +69,10 @@ export function useEventProcessor(options: ProcessorOptions) {
 
     await options.dispatchFloorColor(targetBuildingId, targetFloor.id, resolveFloorColor(newStatus))
 
-    let cameraTarget: Vector3 | GeoCoordinate
-
-    if (viewMode === '3D') {
-      const blueprintWidth = targetFloor.blueprint_width
-      const blueprintHeight = targetFloor.blueprint_height
-      const aspectRatio = blueprintWidth / blueprintHeight
-
-      const planeWidth = 40
-      const planeDepth = 40 / aspectRatio
-
-      const worldX = (targetDevice.x - 0.5) * planeWidth
-      const worldZ = (targetDevice.y - 0.5) * planeDepth
-      const worldY = (floorIndex !== -1 ? floorIndex : 0) * 16
-
-      cameraTarget = { x: worldX, y: worldY, z: worldZ }
-    } else {
-      const width = targetFloor.blueprint_width
-      const height = targetFloor.blueprint_height
-
-      const px = targetDevice.x * width
-      const py = (1 - targetDevice.y) * height
-
-      cameraTarget = { lat: py, lng: px }
-    }
+    const cameraTarget =
+      viewMode === '3D'
+        ? calculate3DWorldTarget(targetDevice, targetFloor, floorIndex)
+        : calculate2DWorldTarget(targetDevice, targetFloor)
 
     await options.dispatchDeviceCamera(
       targetBuildingId,

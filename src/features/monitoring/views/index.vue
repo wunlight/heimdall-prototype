@@ -4,6 +4,10 @@ import { useDeviceMarkerSynchronizer } from '@/features/spatial-viewer/composabl
 import { useSpatialCommandQueue } from '@/features/spatial-viewer/composables/use-spatial-command-queue'
 import type { GeoCoordinate, Vector3 } from '@/features/spatial-viewer/types/camera.type.ts'
 import type { SpatialCommand, SpatialViewMode } from '@/features/spatial-viewer/types/spatial.type'
+import {
+  calculate2DWorldTarget,
+  calculate3DWorldTarget,
+} from '@/features/spatial-viewer/utils/spatial-world.ts'
 import type { Building, Device, Floor } from '@/shared/types/entity.type'
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef } from 'vue'
 import SimulationDialog from '../components/simulation-dialog.vue'
@@ -38,6 +42,77 @@ function selectBuilding(building: Building) {
 
 function createCommandId(): string {
   return `monitoring-${Date.now()}-${crypto.randomUUID()}`
+}
+
+function resolveDeviceContext(device: Device) {
+  for (const [buildingId, floors] of store.cachedFloors) {
+    const floorIndex = floors.findIndex((floor) => floor.id === device.floor_id)
+
+    if (floorIndex !== -1) {
+      return {
+        buildingId,
+        floor: floors[floorIndex]!,
+        floorIndex,
+      }
+    }
+  }
+
+  return null
+}
+
+async function focusDevice(device: Device): Promise<void> {
+  const context = resolveDeviceContext(device)
+
+  if (!context) {
+    console.warn(`Unable to resolve device context: ${device.id}`)
+    return
+  }
+
+  const { buildingId, floor, floorIndex } = context
+
+  const worldTarget =
+    viewMode.value === '3D'
+      ? calculate3DWorldTarget(device, floor, floorIndex)
+      : calculate2DWorldTarget(device, floor)
+
+  const command: SpatialCommand =
+    viewMode.value === '3D'
+      ? {
+          id: createCommandId(),
+          timestamp: Date.now(),
+          source: 'USER',
+          type: 'BUILDING_CAMERA',
+          movement: 'ABSOLUTE',
+          context: {
+            buildingId,
+            floorId: floor.id,
+            deviceId: device.id,
+          },
+          payload: {
+            target: worldTarget as Vector3,
+            distance: 48,
+            duration: 1000,
+          },
+        }
+      : {
+          id: createCommandId(),
+          timestamp: Date.now(),
+          source: 'USER',
+          type: 'FLOOR_CAMERA',
+          movement: 'ABSOLUTE',
+          context: {
+            buildingId,
+            floorId: floor.id,
+            deviceId: device.id,
+          },
+          payload: {
+            center: worldTarget as GeoCoordinate,
+            zoom: 2,
+            duration: 1000,
+          },
+        }
+
+  await enqueueCommand(command)
 }
 
 async function initializeBuildingMarkerStates(buildingId: string): Promise<void> {
@@ -188,13 +263,15 @@ onUnmounted(() => {
 
     <div class="absolute left-3 bottom-3 z-1">
       <div
-        class="flex flex-col p-2 max-h-56 w-lg bg-surface-900 rounded-md overflow-y-auto pointer-events-auto"
+        class="flex flex-col p-2 max-h-56 w-96 bg-surface-900 rounded-md overflow-y-auto pointer-events-auto"
       >
-        <p class="text-surface-500 text-sm">Active Devices</p>
+        <p class="px-2 py-1.5 text-surface-500">Active Devices</p>
         <Divider class="my-2!" />
         <div class="flex flex-col gap-2 h-full overflow-y-auto">
           <div v-for="item in activeDevices" :key="item.id">
-            {{ item.status }} - {{ item.type }}
+            <Button severity="contrast" text fluid class="justify-start!" @click="focusDevice(item)"
+              >{{ item.status }} - {{ item.type }}</Button
+            >
           </div>
         </div>
       </div>
