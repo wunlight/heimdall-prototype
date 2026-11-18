@@ -98,13 +98,35 @@ export const useSpatialCache = defineStore('spatial-cache', {
         return buildingStatus
       },
 
-    getAbnormalDevices: (state) => (): Device[] => {
-      const devices: Device[] = []
-      for (const floorDevices of state.cachedDevices.values()) {
-        devices.push(...floorDevices)
-      }
-      return devices.filter((device) => device.status === 'ALARM' || device.status === 'TROUBLE')
-    },
+    getAbnormalDevicesByFloorId:
+      (state) =>
+      (floorId: string): Device[] => {
+        const devices = state.cachedDevices.get(floorId) ?? []
+
+        return devices.filter((device) => device.status === 'ALARM' || device.status === 'TROUBLE')
+      },
+
+    getAbnormalDevicesByBuildingId:
+      (state) =>
+      (buildingId: string): Device[] => {
+        const floors = state.cachedFloors.get(buildingId) ?? []
+
+        const floorIds = new Set(floors.map((floor) => floor.id))
+
+        const devices: Device[] = []
+
+        for (const [floorId, floorDevices] of state.cachedDevices.entries()) {
+          if (!floorIds.has(floorId)) continue
+
+          devices.push(
+            ...floorDevices.filter(
+              (device) => device.status === 'ALARM' || device.status === 'TROUBLE',
+            ),
+          )
+        }
+
+        return devices
+      },
   },
 
   actions: {

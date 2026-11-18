@@ -24,7 +24,14 @@ const viewMode = ref<SpatialViewMode>('3D')
 const selectedBuilding = ref<Building | null>(null)
 const selectedFloor = ref<Floor | null>(null)
 
-const activeDevices = computed(() => store.getAbnormalDevices())
+const activeDevices = computed(() => {
+  if (viewMode.value === '3D') {
+    return selectedBuilding.value
+      ? store.getAbnormalDevicesByBuildingId(selectedBuilding.value.id)
+      : []
+  }
+  return selectedFloor.value ? store.getAbnormalDevicesByFloorId(selectedFloor.value.id) : []
+})
 
 function selectBuilding(building: Building) {
   selectedBuilding.value = building
