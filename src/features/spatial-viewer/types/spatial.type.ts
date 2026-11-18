@@ -13,7 +13,7 @@ export interface SpatialContext {
 export interface BaseSpatialCommand {
   id: string
   timestamp: number
-  source: 'WEBSOCKET' | 'REPLAY' | 'SYSTEM'
+  source: 'WEBSOCKET' | 'REPLAY' | 'SYSTEM' | 'USER'
   context?: SpatialContext
 }
 
