@@ -22,6 +22,7 @@ export function useFloorScene() {
     isFloorLoading,
     getOrCreateFloorScene,
     renderFloorScene,
+    setDeviceMarkerColor,
     disposeFloorScene,
     disposeAllFloorScenes,
   }
@@ -104,6 +105,13 @@ const renderFloorScene = async (floor: Floor, devices: Device[]): Promise<void> 
   } finally {
     scene.isLoading = false
   }
+}
+
+const setDeviceMarkerColor = (floorId: string, deviceId: string, color: string) => {
+  const circle = getScene(floorId)?.circles.get(deviceId)
+  if (!circle) return
+
+  circle.setStyle({ color })
 }
 
 const disposeFloorScene = (floorId: string) => {
