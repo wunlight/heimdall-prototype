@@ -23,6 +23,7 @@ export function useFloorScene() {
     getOrCreateFloorScene,
     renderFloorScene,
     setDeviceMarkerColor,
+    solveFloorBounds,
     disposeFloorScene,
     disposeAllFloorScenes,
   }
@@ -68,11 +69,13 @@ const solveLatLng = (device: Pick<Device, 'x' | 'y'>, floor: Floor): L.LatLngExp
 const solveRadius = (floor: Floor) =>
   Math.min(floor.blueprint_width, floor.blueprint_height) * CIRCLE_RATIO
 
+const solveFloorBounds = (floor: Floor): L.LatLngBoundsExpression => [
+  [0, 0],
+  [floor.blueprint_height, floor.blueprint_width],
+]
+
 const addOverlay = (scene: FloorScene, floor: Floor) => {
-  const overlay = L.imageOverlay(floor.blueprint_url, [
-    [floor.blueprint_height, 0],
-    [0, floor.blueprint_width],
-  ])
+  const overlay = L.imageOverlay(floor.blueprint_url, solveFloorBounds(floor))
   scene.overlay = overlay
   scene.layerGroup.addLayer(overlay)
 }
@@ -81,7 +84,7 @@ const addDevice = (scene: FloorScene, device: Device, floor: Floor) => {
   const position = solveLatLng(device, floor)
 
   const marker = L.marker(position).bindTooltip(
-    L.tooltip({ offset: [0, 0] }).setContent(device.type),
+    L.tooltip({ offset: [0, 0] }).setContent(`${device.type} | x:${device.x}, y:${device.y}`),
   )
   const circle = L.circle(position, {
     radius: solveRadius(floor),

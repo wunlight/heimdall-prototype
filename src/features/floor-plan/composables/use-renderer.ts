@@ -4,8 +4,9 @@ import { shallowRef } from 'vue'
 export function useFloorRenderer(container: HTMLDivElement) {
   const map = L.map(container, {
     crs: L.CRS.Simple,
-    minZoom: -3,
+    center: [0, 0],
     zoom: 0,
+    minZoom: -3,
     maxZoom: 3,
     zoomControl: false,
     attributionControl: false,
