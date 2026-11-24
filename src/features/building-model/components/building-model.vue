@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Device, Floor } from '@/shared/types/entity.type'
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useBuildingCamera } from '../composables/use-camera'
 import { useBuildingRenderer } from '../composables/use-renderer'
 import { useBuildingScene } from '../composables/use-scene'
@@ -8,7 +8,7 @@ import { useBuildingScene } from '../composables/use-scene'
 const props = defineProps<{
   buildingId: string | null
   floors: Floor[]
-  devices: Device[]
+  devices: Map<string, Device[]>
 }>()
 
 const emit = defineEmits<{
@@ -23,16 +23,6 @@ let renderer: ReturnType<typeof useBuildingRenderer> | null = null
 let camera: ReturnType<typeof useBuildingCamera> | null = null
 
 const scenes = useBuildingScene()
-
-const devicesByFloor = computed(() => {
-  const map = new Map<string, Device[]>()
-  for (const device of props.devices) {
-    const list = map.get(device.floor_id) ?? []
-    list.push(device)
-    map.set(device.floor_id, list)
-  }
-  return map
-})
 
 const waitUntilSceneReady = (buildingId: string) =>
   new Promise<void>((resolve) => {
@@ -55,7 +45,7 @@ const showBuilding = async (buildingId: string, floors: Floor[]) => {
     if (scenes.isBuildingLoading(buildingId)) {
       await waitUntilSceneReady(buildingId)
     } else if (!scenes.hasBuildingScene(buildingId)) {
-      await scenes.renderBuildingScene(buildingId, floors, devicesByFloor.value)
+      await scenes.renderBuildingScene(buildingId, floors, props.devices)
     }
     attachBuilding(buildingId)
   } finally {
@@ -63,7 +53,7 @@ const showBuilding = async (buildingId: string, floors: Floor[]) => {
   }
 }
 
-onMounted(() => {
+const initialize = () => {
   if (!canvasRef.value) {
     console.warn('Scene canvas not available')
     return
@@ -73,6 +63,12 @@ onMounted(() => {
 
   camera = useBuildingCamera(renderer.camera, renderer.controls)
   emit('camera-ready', camera)
+}
+
+onMounted(async () => {
+  await nextTick()
+  initialize()
+  if (props.buildingId) void showBuilding(props.buildingId, props.floors)
 })
 
 onBeforeUnmount(() => {

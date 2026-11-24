@@ -119,9 +119,9 @@ const createFloorSpace = (width: number, depth: number, yPos: number, floor: Flo
 const createDeviceMarker = (device: Device, yPos: number, width: number, depth: number) => {
   const marker = new THREE.Mesh(
     new THREE.SphereGeometry(0.75, 16, 16),
-    new THREE.MeshBasicMaterial(),
+    new THREE.MeshBasicMaterial({ color: '#00c950' }),
   )
-  marker.position.set((device.x - 0.5) * width, yPos + 0.5, (device.y - 0.5) * depth)
+  marker.position.set((device.x - 0.5) * width, yPos + 0.5, (1 - device.y - 0.5) * depth)
   marker.userData = { ...device }
   return marker
 }
