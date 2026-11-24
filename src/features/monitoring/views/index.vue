@@ -1,125 +1,156 @@
 <script setup lang="ts">
-import SpatialViewer from '@/features/spatial-viewer/components/spatial-viewer.vue'
-import type { SpatialCommand } from '@/features/spatial-viewer/types/spatial.type'
-import { ref } from 'vue'
+import DevicesTable from '@/features/monitoring/components/devices-table.vue'
+import SpatialStage from '@/features/spatial-stage/components/spatial-stage.vue'
+import type { SpatialViewMode } from '@/features/spatial-stage/types/state.type.ts'
+import { useEntityStore } from '@/shared/stores/entity.store'
+import type { Floor } from '@/shared/types/entity.type.ts'
+import { computed, ref } from 'vue'
 
-const spatialViewerRef = ref<InstanceType<typeof SpatialViewer> | null>(null)
-const isRunning = ref(false)
+const entity = useEntityStore()
 
-function createDemoCommands(): SpatialCommand[] {
-  const timestamp = Date.now()
+const viewMode = ref<SpatialViewMode>('3d')
+const buildingId = ref<string | null>(null)
+const floorId = ref<string | null>(null)
 
-  return [
-    {
-      id: 'demo-3d-initial-position',
-      timestamp,
-      source: 'SYSTEM',
-      type: 'CAMERA_3D',
-      movement: 'ABSOLUTE',
-      payload: {
-        target: { x: 0, y: 0, z: 0 },
-        azimuth: 45,
-        elevation: 30,
-        distance: 50,
-        duration: 1000,
-      },
-    },
-    {
-      id: 'demo-3d-relative-orbit',
-      timestamp: timestamp + 1,
-      source: 'SYSTEM',
-      type: 'CAMERA_3D',
-      movement: 'RELATIVE',
-      payload: {
-        azimuth: 30,
-        elevation: 10,
-        duration: 1000,
-      },
-    },
-    {
-      id: 'demo-3d-absolute-reposition',
-      timestamp: timestamp + 2,
-      source: 'SYSTEM',
-      type: 'CAMERA_3D',
-      movement: 'ABSOLUTE',
-      payload: {
-        target: { x: 10, y: 0, z: 10 },
-        azimuth: 90,
-        elevation: 45,
-        distance: 30,
-        duration: 1000,
-      },
-    },
-    {
-      id: 'demo-view-switch-to-2d',
-      timestamp: timestamp + 3,
-      source: 'SYSTEM',
-      type: 'SWITCH_VIEW',
-      target: '2D',
-      context: {
-        buildingId: 'bldg-2',
-        floorId: 'flr-2-3',
-      },
-    },
-    {
-      id: 'demo-2d-center-position',
-      timestamp: timestamp + 4,
-      source: 'SYSTEM',
-      type: 'CAMERA_2D',
-      movement: 'ABSOLUTE',
-      payload: {
-        center: {
-          lat: -6.2,
-          lng: 106.8,
+const floors = computed(() =>
+  Object.values(entity.floors).filter((f) => f.building_id === buildingId.value),
+)
+
+const visibleDevices = computed(() => {
+  const floorIds =
+    viewMode.value === '2d'
+      ? new Set(floorId.value ? [floorId.value] : [])
+      : new Set(floors.value.map((f) => f.id))
+
+  return Object.values(entity.devices)
+    .filter((d) => floorIds.has(d.floor_id))
+    .flatMap((device) => {
+      const floor = entity.floors[device.floor_id]
+      if (!floor) return []
+      return [
+        {
+          ...device,
+          status: 'normal',
+          buildingName: buildingNameOf(floor.building_id),
+          floorName: floor.name,
         },
-        zoom: 3,
-        duration: 1000,
-      },
-    },
-  ]
+      ]
+    })
+})
+
+const devicesByFloor = computed(() => {
+  const floorIds = new Set(floors.value.map((f) => f.id))
+  return Object.values(entity.devices).filter((d) => floorIds.has(d.floor_id))
+})
+
+const buildingNameOf = (bId: string) => entity.buildings[bId]?.name ?? '-'
+
+const floorsOf = (id: string) => Object.values(entity.floors).filter((f) => f.building_id === id)
+
+const resetFloor = (candidates: Floor[]) => {
+  floorId.value = candidates[0]?.id ?? null
 }
 
-async function executeCameraDemo() {
-  const viewer = spatialViewerRef.value
+const changeViewMode = (mode: SpatialViewMode) => {
+  viewMode.value = mode
+  resetFloor(mode === '2d' ? floors.value : [])
+}
 
-  if (!viewer || isRunning.value) return
-
-  isRunning.value = true
-
-  const commands = createDemoCommands()
-
-  console.group('[SPATIAL DEMO] Camera Movement')
-
-  try {
-    for (const command of commands) {
-      const accepted = await viewer.executeSpatialCommand(command)
-
-      console.info(`[${command.type}] ${command.id}:`, accepted ? 'ACCEPTED' : 'REJECTED')
-
-      if (!accepted) {
-        console.warn('Demo sequence interrupted.')
-        break
-      }
-    }
-  } catch (error) {
-    console.error('Camera demo execution failed:', error)
-  } finally {
-    isRunning.value = false
-    console.groupEnd()
-  }
+const selectBuilding = (bId: string) => {
+  buildingId.value = bId
+  resetFloor(viewMode.value === '2d' ? floorsOf(bId) : [])
 }
 </script>
 
 <template>
-  <div class="relative h-svh overflow-hidden pointer-events-none">
-    <SpatialViewer ref="spatialViewerRef" class="relative z-0" />
+  <div class="relative h-dvh overflow-hidden">
+    <SpatialStage
+      v-model:view-mode="viewMode"
+      :building-id="buildingId"
+      :floor-id="floorId"
+      :floors="floors"
+      :devices="devicesByFloor"
+      class="relative isolate z-0"
+    />
 
-    <div class="absolute right-4 bottom-4 z-50 flex gap-2 pointer-events-auto">
-      <Button
-        :label="isRunning ? 'Running Demo...' : 'Run Camera Demo'"
-        :disabled="isRunning"
-        @click="executeCameraDemo"
-      />
+    <div
+      class="absolute isolate inset-3 z-1 grid grid-cols-10 grid-rows-6 gap-1.5 pointer-events-none"
+    >
+      <div class="col-span-3 row-span-2 flex items-start gap-1.5 h-full overflow-hidden">
+        <div
+          class="group p-1.5 max-h-full hover:w-64 bg-zinc-900 border border-zinc-700 rounded-lg transition-all duration-300 origin-top-left [interpolate-size:allow-keywords] overflow-y-auto pointer-events-auto"
+        >
+          <div class="hidden group-hover:flex flex-col gap-1.5">
+            <Button
+              v-for="item in entity.buildings"
+              :key="item.id"
+              :label="item.name"
+              :variant="buildingId === item.id ? '' : 'text'"
+              @click="selectBuilding(item.id)"
+              icon="icon-[tabler--building]"
+              severity="contrast"
+              class="shrink-0 justify-start!"
+            />
+          </div>
+          <span class="icon-[tabler--building] block group-hover:hidden size-5" />
+        </div>
+        <div
+          class="flex gap-1 p-1 size-fit bg-zinc-900 border border-zinc-700 rounded-lg pointer-events-auto"
+        >
+          <Button
+            :variant="viewMode === '3d' ? '' : 'text'"
+            @click="changeViewMode('3d')"
+            label="3D"
+            severity="contrast"
+            size="small"
+            class="h-6!"
+          />
+          <Button
+            :variant="viewMode === '2d' ? '' : 'text'"
+            @click="changeViewMode('2d')"
+            label="2D"
+            severity="contrast"
+            size="small"
+            class="h-6!"
+          />
+        </div>
+      </div>
+
+      <div class="col-span-5" />
+
+      <div
+        v-if="viewMode === '2d' && floors.length > 0"
+        class="col-span-2 row-span-2 flex items-start justify-end"
+      >
+        <div
+          class="group flex flex-col gap-1.5 p-1.5 max-h-full w-12 hover:w-64 bg-zinc-900 border border-zinc-700 rounded-lg transition-all duration-300 overflow-x-hidden overflow-y-auto pointer-events-auto"
+        >
+          <div
+            v-for="item in floors"
+            :key="item.id"
+            :class="
+              floorId === item.id
+                ? 'text-zinc-900 bg-white hover:bg-zinc-200'
+                : 'bg-zinc-800 hover:bg-zinc-700'
+            "
+            @click="floorId = item.id"
+            class="flex items-center shrink-0 group-hover:px-3 h-1.5 group-hover:h-9 w-9 group-hover:w-auto rounded-lg cursor-pointer"
+          >
+            <p class="hidden group-hover:block">{{ item.name }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="row-span-2 col-span-full" />
+
+      <div class="col-span-5 row-span-2 flex items-end overflow-hidden">
+        <div
+          class="group flex flex-col p-1.5 hover:p-0 size-fit hover:size-full bg-zinc-900 border border-zinc-700 rounded-lg transition-all duration-300 origin-bottom-left [interpolate-size:allow-keywords] overflow-hidden pointer-events-auto"
+        >
+          <DevicesTable :devices="visibleDevices" class="hidden! group-hover:block!" />
+          <span class="icon-[tabler--alarm-smoke] block group-hover:hidden size-5" />
+        </div>
+      </div>
     </div>
   </div>
 </template>
