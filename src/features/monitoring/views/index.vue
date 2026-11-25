@@ -6,7 +6,7 @@ import { useSpatialGateway } from '@/features/spatial-stage/composables/use-spat
 import type { SpatialViewMode } from '@/features/spatial-stage/types/state.type'
 import { useEntityStore } from '@/shared/stores/entity.store'
 import type { Floor } from '@/shared/types/entity.type'
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 
 const entity = useEntityStore()
 const cameraRegistry = createCameraRegistry()
@@ -57,6 +57,11 @@ const selectBuilding = (bId: string) => {
     if (next) gateway.selectFloor(next.id)
   }
 }
+
+onMounted(() => {
+  const defaultFloor = Object.values(entity.floors)[0]
+  if (defaultFloor) selectBuilding(defaultFloor.building_id)
+})
 </script>
 
 <template>
