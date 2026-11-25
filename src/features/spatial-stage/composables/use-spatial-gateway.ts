@@ -43,13 +43,15 @@ export function useSpatialGateway(cameraRegistry: ReturnType<typeof createCamera
         viewMode.value = cmd.mode
         break
       case 'SELECT_BUILDING':
-        if (cmd.buildingId) await waitForScene('3d', cmd.buildingId, cmd.generation)
         buildingId.value = cmd.buildingId
         floorId.value = null
+        if (cmd.buildingId && viewMode.value === '3d')
+          await waitForScene('3d', cmd.buildingId, cmd.generation)
         break
       case 'SELECT_FLOOR':
-        if (cmd.floorId) await waitForScene('2d', cmd.floorId, cmd.generation)
         floorId.value = cmd.floorId
+        if (cmd.floorId && viewMode.value === '2d')
+          await waitForScene('2d', cmd.floorId, cmd.generation)
         break
     }
   }
