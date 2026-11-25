@@ -8,6 +8,8 @@ import { toCameraTarget } from '@/features/spatial-stage/utils/device-target'
 import { useEntityStore } from '@/shared/stores/entity.store'
 import type { Device, Floor } from '@/shared/types/entity.type'
 import { computed, onMounted, ref, watch } from 'vue'
+import BuildingList from '../components/widgets/building-list.vue'
+import FloorList from '../components/widgets/floor-list.vue'
 
 const entity = useEntityStore()
 const cameraRegistry = createCameraRegistry()
@@ -99,23 +101,11 @@ watch(selectedDevice, (newDevice) => {
       class="absolute isolate inset-3 z-1 grid grid-cols-10 grid-rows-6 gap-1.5 pointer-events-none"
     >
       <div class="col-span-3 row-span-2 flex items-start gap-1.5 h-full overflow-hidden">
-        <div
-          class="group p-1.5 max-h-full hover:w-64 bg-zinc-900 border border-zinc-700 rounded-lg transition-all duration-300 origin-top-left [interpolate-size:allow-keywords] overflow-y-auto pointer-events-auto"
-        >
-          <div class="hidden group-hover:flex flex-col gap-1.5">
-            <Button
-              v-for="item in entity.buildings"
-              :key="item.id"
-              :label="item.name"
-              :variant="gateway.state.buildingId === item.id ? '' : 'text'"
-              @click="selectBuilding(item.id)"
-              icon="icon-[tabler--building]"
-              severity="contrast"
-              class="shrink-0 justify-start!"
-            />
-          </div>
-          <span class="icon-[tabler--building] block group-hover:hidden size-5" />
-        </div>
+        <BuildingList
+          :buildings="entity.buildings"
+          :selected-id="gateway.state.buildingId"
+          @select="selectBuilding"
+        />
         <div
           class="flex gap-1 p-1 size-fit bg-zinc-900 border border-zinc-700 rounded-lg pointer-events-auto"
         >
@@ -144,23 +134,11 @@ watch(selectedDevice, (newDevice) => {
         v-if="gateway.state.viewMode === '2d' && floors.length > 0"
         class="col-span-2 row-span-2 flex items-start justify-end"
       >
-        <div
-          class="group flex flex-col gap-1.5 p-1.5 max-h-full w-12 hover:w-64 bg-zinc-900 border border-zinc-700 rounded-lg transition-all duration-300 overflow-x-hidden overflow-y-auto pointer-events-auto"
-        >
-          <div
-            v-for="item in floors"
-            :key="item.id"
-            :class="
-              gateway.state.floorId === item.id
-                ? 'text-zinc-900 bg-white hover:bg-zinc-200'
-                : 'bg-zinc-800 hover:bg-zinc-700'
-            "
-            @click="gateway.selectFloor(item.id)"
-            class="flex items-center shrink-0 group-hover:px-3 h-1.5 group-hover:h-9 w-9 group-hover:w-auto rounded-lg cursor-pointer"
-          >
-            <p class="hidden group-hover:block">{{ item.name }}</p>
-          </div>
-        </div>
+        <FloorList
+          :floors="floors"
+          :selected-id="gateway.state.floorId"
+          @select="gateway.selectFloor"
+        />
       </div>
 
       <div class="row-span-2 col-span-full" />
