@@ -4,13 +4,16 @@ import SpatialStage from '@/features/spatial-stage/components/spatial-stage.vue'
 import { createCameraRegistry } from '@/features/spatial-stage/composables/create-camera-registry'
 import { useSpatialGateway } from '@/features/spatial-stage/composables/use-spatial-gateway'
 import type { SpatialViewMode } from '@/features/spatial-stage/types/state.type'
+import { toCameraTarget } from '@/features/spatial-stage/utils/device-target'
 import { useEntityStore } from '@/shared/stores/entity.store'
-import type { Floor } from '@/shared/types/entity.type'
-import { computed, onMounted } from 'vue'
+import type { Device, Floor } from '@/shared/types/entity.type'
+import { computed, onMounted, ref, watch } from 'vue'
 
 const entity = useEntityStore()
 const cameraRegistry = createCameraRegistry()
 const gateway = useSpatialGateway(cameraRegistry)
+
+const selectedDevice = ref<Device | null>(null)
 
 const floors = computed(() =>
   Object.values(entity.floors).filter((f) => f.building_id === gateway.state.buildingId),
@@ -61,6 +64,20 @@ const selectBuilding = (bId: string) => {
 onMounted(() => {
   const defaultFloor = Object.values(entity.floors)[0]
   if (defaultFloor) selectBuilding(defaultFloor.building_id)
+})
+
+watch(selectedDevice, (newDevice) => {
+  if (!newDevice) return
+
+  const floor = entity.floors[newDevice.floor_id]
+  if (!floor) return
+
+  if (gateway.state.buildingId !== floor.building_id) gateway.selectBuilding(floor.building_id)
+  if (gateway.state.viewMode === '2d' && gateway.state.floorId !== floor.id)
+    gateway.selectFloor(floor.id)
+
+  gateway.moveCamera(toCameraTarget(gateway.state.viewMode, newDevice, floor))
+  selectedDevice.value = null
 })
 </script>
 
@@ -152,7 +169,11 @@ onMounted(() => {
         <div
           class="group flex flex-col p-1.5 hover:p-0 size-fit hover:size-full bg-zinc-900 border border-zinc-700 rounded-lg transition-all duration-300 origin-bottom-left [interpolate-size:allow-keywords] overflow-hidden pointer-events-auto"
         >
-          <DevicesTable :devices="visibleDevices" class="hidden! group-hover:block!" />
+          <DevicesTable
+            v-model:selected="selectedDevice"
+            :devices="visibleDevices"
+            class="hidden! group-hover:block!"
+          />
           <span class="icon-[tabler--alarm-smoke] block group-hover:hidden size-5" />
         </div>
       </div>

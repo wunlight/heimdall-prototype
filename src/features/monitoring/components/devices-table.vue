@@ -5,6 +5,8 @@ defineProps<{
   devices: Device[]
 }>()
 
+const selected = defineModel<Device | null>('selected', { default: null })
+
 const statusSeverity = (status: StatusType) => {
   switch (status) {
     case 'alarm':
@@ -21,6 +23,7 @@ const statusSeverity = (status: StatusType) => {
 
 <template>
   <DataTable
+    v-model:selection="selected"
     :value="devices"
     striped-rows
     selection-mode="single"
