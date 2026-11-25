@@ -1,79 +1,83 @@
 <script setup lang="ts">
-import DevicesTable from '@/features/monitoring/components/devices-table.vue'
 import SpatialStage from '@/features/spatial-stage/components/spatial-stage.vue'
-import type { SpatialViewMode } from '@/features/spatial-stage/types/state.type.ts'
+import { createCameraRegistry } from '@/features/spatial-stage/composables/create-camera-registry'
+import { useSpatialGateway } from '@/features/spatial-stage/composables/use-spatial-gateway'
 import { useEntityStore } from '@/shared/stores/entity.store'
-import type { Floor } from '@/shared/types/entity.type.ts'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
 const entity = useEntityStore()
+const cameraRegistry = createCameraRegistry()
 
-const viewMode = ref<SpatialViewMode>('3d')
-const buildingId = ref<string | null>(null)
-const floorId = ref<string | null>(null)
+const gateway = useSpatialGateway(cameraRegistry)
 
 const floors = computed(() =>
-  Object.values(entity.floors).filter((f) => f.building_id === buildingId.value),
+  Object.values(entity.floors).filter((f) => f.building_id === gateway.state.buildingId),
 )
-
-const visibleDevices = computed(() => {
-  const floorIds =
-    viewMode.value === '2d'
-      ? new Set(floorId.value ? [floorId.value] : [])
-      : new Set(floors.value.map((f) => f.id))
-
-  return Object.values(entity.devices)
-    .filter((d) => floorIds.has(d.floor_id))
-    .flatMap((device) => {
-      const floor = entity.floors[device.floor_id]
-      if (!floor) return []
-      return [
-        {
-          ...device,
-          status: 'normal',
-          buildingName: buildingNameOf(floor.building_id),
-          floorName: floor.name,
-        },
-      ]
-    })
-})
-
-const devicesByFloor = computed(() => {
+const devices = computed(() => {
   const floorIds = new Set(floors.value.map((f) => f.id))
   return Object.values(entity.devices).filter((d) => floorIds.has(d.floor_id))
 })
 
-const buildingNameOf = (bId: string) => entity.buildings[bId]?.name ?? '-'
+// const visibleDevices = computed(() => {
+//   const floorIds =
+//     viewMode.value === '2d'
+//       ? new Set(floorId.value ? [floorId.value] : [])
+//       : new Set(floors.value.map((f) => f.id))
 
-const floorsOf = (id: string) => Object.values(entity.floors).filter((f) => f.building_id === id)
+//   return Object.values(entity.devices)
+//     .filter((d) => floorIds.has(d.floor_id))
+//     .flatMap((device) => {
+//       const floor = entity.floors[device.floor_id]
+//       if (!floor) return []
+//       return [
+//         {
+//           ...device,
+//           status: 'normal',
+//           buildingName: buildingNameOf(floor.building_id),
+//           floorName: floor.name,
+//         },
+//       ]
+//     })
+// })
 
-const resetFloor = (candidates: Floor[]) => {
-  floorId.value = candidates[0]?.id ?? null
-}
+// const devicesByFloor = computed(() => {
+//   const floorIds = new Set(floors.value.map((f) => f.id))
+//   return Object.values(entity.devices).filter((d) => floorIds.has(d.floor_id))
+// })
 
-const changeViewMode = (mode: SpatialViewMode) => {
-  viewMode.value = mode
-  resetFloor(mode === '2d' ? floors.value : [])
-}
+// const buildingNameOf = (bId: string) => entity.buildings[bId]?.name ?? '-'
 
-const selectBuilding = (bId: string) => {
-  buildingId.value = bId
-  resetFloor(viewMode.value === '2d' ? floorsOf(bId) : [])
-}
+// const floorsOf = (id: string) => Object.values(entity.floors).filter((f) => f.building_id === id)
+
+// const resetFloor = (candidates: Floor[]) => {
+//   floorId.value = candidates[0]?.id ?? null
+// }
+
+// const changeViewMode = (mode: SpatialViewMode) => {
+//   viewMode.value = mode
+//   resetFloor(mode === '2d' ? floors.value : [])
+// }
+
+// const selectBuilding = (bId: string) => {
+//   buildingId.value = bId
+//   resetFloor(viewMode.value === '2d' ? floorsOf(bId) : [])
+// }
 </script>
 
 <template>
   <div class="relative h-dvh overflow-hidden">
     <SpatialStage
-      v-model:view-mode="viewMode"
-      :building-id="buildingId"
-      :floor-id="floorId"
+      :view-mode="gateway.state.viewMode"
+      :building-id="gateway.state.buildingId"
+      :floor-id="gateway.state.floorId"
       :floors="floors"
-      :devices="devicesByFloor"
+      :devices="devices"
+      @camera-ready="cameraRegistry.register"
+      @camera-disposed="cameraRegistry.unregister"
       class="relative isolate z-0"
     />
 
-    <div
+    <!-- <div
       class="absolute isolate inset-3 z-1 grid grid-cols-10 grid-rows-6 gap-1.5 pointer-events-none"
     >
       <div class="col-span-3 row-span-2 flex items-start gap-1.5 h-full overflow-hidden">
@@ -151,6 +155,6 @@ const selectBuilding = (bId: string) => {
           <span class="icon-[tabler--alarm-smoke] block group-hover:hidden size-5" />
         </div>
       </div>
-    </div>
+    </div> -->
   </div>
 </template>

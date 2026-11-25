@@ -1,6 +1,7 @@
+import type { CameraTarget2d } from '@/features/spatial-stage/types/camera.type'
 import { type Map as LMap } from 'leaflet'
 import { ref } from 'vue'
-import type { CameraState, FloorCameraPayload, WorldPoint2D } from '../types/camera.type'
+import type { CameraState, WorldPoint2D } from '../types/camera.type'
 
 const DEFAULT_CAMERA_2D = {
   center: { lat: 0, lng: 0 },
@@ -88,16 +89,16 @@ export function useFloorCamera(map: LMap | null) {
     })
   }
 
-  function resolveAbsolute(payload: FloorCameraPayload): CameraState {
+  function resolveAbsolute(payload: CameraTarget2d): CameraState {
     return {
-      center: copyPoint(payload.center ?? DEFAULT_CAMERA_2D.center),
+      center: copyPoint(payload.target ?? DEFAULT_CAMERA_2D.center),
       zoom: payload.zoom ?? DEFAULT_CAMERA_2D.zoom,
     }
   }
 
-  function resolveRelative(payload: FloorCameraPayload): CameraState {
+  function resolveRelative(payload: CameraTarget2d): CameraState {
     const current = readState()
-    const delta = payload.center
+    const delta = payload.target
 
     return {
       center: delta
@@ -108,8 +109,8 @@ export function useFloorCamera(map: LMap | null) {
   }
 
   const execute =
-    (resolve: (payload: FloorCameraPayload) => CameraState) =>
-    async (payload: FloorCameraPayload, signal: AbortSignal): Promise<void> => {
+    (resolve: (payload: CameraTarget2d) => CameraState) =>
+    async (payload: CameraTarget2d, signal: AbortSignal): Promise<void> => {
       if (!map) {
         console.warn('Map instance not available')
         return

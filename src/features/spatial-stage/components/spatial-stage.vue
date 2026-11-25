@@ -3,17 +3,22 @@ import BuildingModel from '@/features/building-model/components/building-model.v
 import FloorPlan from '@/features/floor-plan/components/floor-plan.vue'
 import type { Device, Floor } from '@/shared/types/entity.type.ts'
 import { computed } from 'vue'
+import type { CameraInstance } from '../types/camera.type.ts'
 import type { SpatialViewMode } from '../types/state.type.ts'
 import AmbientBg from './ambient-bg.vue'
 
 const props = defineProps<{
+  viewMode: SpatialViewMode
   buildingId: string | null
   floorId: string | null
   floors: Floor[]
   devices: Device[]
 }>()
 
-const viewMode = defineModel<SpatialViewMode>('view-mode', { default: '3d' })
+const emit = defineEmits<{
+  'camera-ready': [instance: CameraInstance]
+  'camera-disposed': [mode: SpatialViewMode]
+}>()
 
 const devicesByFloor = computed(() => {
   const map = new Map<string, Device[]>()
@@ -26,7 +31,6 @@ const devicesByFloor = computed(() => {
 })
 
 const activeFloor = computed(() => props.floors.find((f) => f.id === props.floorId) ?? null)
-
 const activeFloorDevices = computed(() =>
   activeFloor.value ? (devicesByFloor.value.get(activeFloor.value.id) ?? []) : [],
 )
@@ -42,8 +46,16 @@ const activeFloorDevices = computed(() =>
         :building-id="buildingId"
         :floors="floors"
         :devices="devicesByFloor"
+        @camera-ready="(camera) => emit('camera-ready', { mode: '3d', camera })"
+        @camera-disposed="emit('camera-disposed', '3d')"
       />
-      <FloorPlan v-else-if="viewMode === '2d'" :floor="activeFloor" :devices="activeFloorDevices" />
+      <FloorPlan
+        v-else-if="viewMode === '2d'"
+        :floor="activeFloor"
+        :devices="activeFloorDevices"
+        @camera-ready="(camera) => emit('camera-ready', { mode: '2d', camera })"
+        @camera-disposed="emit('camera-disposed', '2d')"
+      />
     </div>
   </div>
 </template>

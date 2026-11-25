@@ -1,8 +1,9 @@
+import type { CameraTarget3d } from '@/features/spatial-stage/types/camera.type'
 import * as THREE from 'three'
 import type { OrbitControls } from 'three/examples/jsm/Addons.js'
 import { ref } from 'vue'
 import { DEFAULT_CAMERA_3D, LOCKED_POLAR_ANGLE } from '../constants/camera'
-import type { BuildingCameraPayload, OrbitState, WorldPoint3D } from '../types/camera.type'
+import type { OrbitState, WorldPoint3D } from '../types/camera.type'
 
 export function useBuildingCamera(
   camera: THREE.PerspectiveCamera | null,
@@ -117,7 +118,7 @@ export function useBuildingCamera(
     })
   }
 
-  function resolveAbsolute(payload: BuildingCameraPayload): OrbitState {
+  function resolveAbsolute(payload: CameraTarget3d): OrbitState {
     const current = readState()
     const target = copyPoint(payload.target ?? DEFAULT_CAMERA_3D.target)
     const desiredAzimuth =
@@ -130,7 +131,7 @@ export function useBuildingCamera(
     }
   }
 
-  function resolveRelative(payload: BuildingCameraPayload): OrbitState {
+  function resolveRelative(payload: CameraTarget3d): OrbitState {
     const current = readState()
     const delta = payload.target
 
@@ -148,8 +149,8 @@ export function useBuildingCamera(
   }
 
   const execute =
-    (resolve: (payload: BuildingCameraPayload) => OrbitState) =>
-    async (payload: BuildingCameraPayload, signal: AbortSignal): Promise<void> => {
+    (resolve: (payload: CameraTarget3d) => OrbitState) =>
+    async (payload: CameraTarget3d, signal: AbortSignal): Promise<void> => {
       if (!rig()) {
         console.warn('Camera or controls not available')
         return
