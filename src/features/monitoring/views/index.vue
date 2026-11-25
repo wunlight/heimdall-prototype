@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import DevicesTable from '@/features/monitoring/components/devices-table.vue'
+import ControlGuide from '@/features/spatial-stage/components/control-guide.vue'
 import SpatialStage from '@/features/spatial-stage/components/spatial-stage.vue'
 import { createCameraRegistry } from '@/features/spatial-stage/composables/create-camera-registry'
 import { useSpatialGateway } from '@/features/spatial-stage/composables/use-spatial-gateway'
@@ -156,24 +157,6 @@ watch(selectedDevice, (newDevice) => {
         </div>
       </div>
     </div>
-
-    <div class="absolute right-3 bottom-3 z-1 hidden pointer-fine:flex gap-6">
-      <div class="flex items-center gap-1">
-        <div class="grid place-content-center px-1.5 h-6 text-xs bg-zinc-900 rounded">Shift</div>
-        <span class="icon-[tabler--plus]" />
-        <div class="grid place-content-center size-6 bg-zinc-900 rounded">
-          <span class="icon-[tabler--mouse]" />
-        </div>
-        <p class="text-xs">Pan left/right</p>
-      </div>
-      <div class="flex items-center gap-1">
-        <div class="grid place-content-center px-1.5 h-6 text-xs bg-zinc-900 rounded">Ctrl</div>
-        <span class="icon-[tabler--plus]" />
-        <div class="grid place-content-center size-6 bg-zinc-900 rounded">
-          <span class="icon-[tabler--mouse]" />
-        </div>
-        <p class="text-xs">Zoom in/out</p>
-      </div>
-    </div>
+    <ControlGuide class="absolute right-3 bottom-3 z-1" />
   </div>
 </template>
