@@ -13,6 +13,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'camera-ready': [camera: ReturnType<typeof useFloorCamera>]
   'camera-disposed': []
+  'scene-ready': [floorId: string]
 }>()
 
 const canvasRef = useTemplateRef<HTMLDivElement>('canvas')
@@ -51,6 +52,7 @@ const showFloor = async (floor: Floor) => {
       await scenes.renderFloorScene(floor, props.devices)
     }
     attachFloor(floor)
+    emit('scene-ready', floor.id)
   } finally {
     isRendering.value = false
   }

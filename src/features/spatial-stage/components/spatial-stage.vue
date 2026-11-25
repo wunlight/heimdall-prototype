@@ -18,6 +18,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'camera-ready': [instance: CameraInstance]
   'camera-disposed': [mode: SpatialViewMode]
+  'scene-ready': [mode: SpatialViewMode, id: string]
 }>()
 
 const devicesByFloor = computed(() => {
@@ -48,6 +49,7 @@ const activeFloorDevices = computed(() =>
         :devices="devicesByFloor"
         @camera-ready="(camera) => emit('camera-ready', { mode: '3d', camera })"
         @camera-disposed="emit('camera-disposed', '3d')"
+        @scene-ready="(id) => emit('scene-ready', '3d', id)"
       />
       <FloorPlan
         v-else-if="viewMode === '2d'"
@@ -55,6 +57,7 @@ const activeFloorDevices = computed(() =>
         :devices="activeFloorDevices"
         @camera-ready="(camera) => emit('camera-ready', { mode: '2d', camera })"
         @camera-disposed="emit('camera-disposed', '2d')"
+        @scene-ready="(id) => emit('scene-ready', '2d', id)"
       />
     </div>
   </div>

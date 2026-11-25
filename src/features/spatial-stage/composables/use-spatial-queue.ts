@@ -5,6 +5,7 @@ type Runner = (cmd: SpatialCommand) => Promise<void>
 
 export function useSpatialQueue(run: Runner) {
   const generation = ref(0)
+  const disposed = ref(false)
   const pending: SpatialCommand[] = []
   let draining = false
 
@@ -35,15 +36,22 @@ export function useSpatialQueue(run: Runner) {
   }
 
   const dispatch = (intent: SpatialIntent) => {
-    const isSceneChange = intent.kind !== 'MOVE_CAMERA'
-    if (isSceneChange) invalidate()
+    if (disposed.value) return
+    if (intent.kind !== 'MOVE_CAMERA') invalidate()
     pending.push({ ...intent, generation: generation.value })
     void drain()
+  }
+
+  const clear = () => {
+    disposed.value = true
+    generation.value++
+    pending.length = 0
   }
 
   return {
     generation,
     isStale,
     dispatch,
+    clear,
   }
 }

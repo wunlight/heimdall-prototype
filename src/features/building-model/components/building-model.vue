@@ -14,6 +14,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'camera-ready': [camera: ReturnType<typeof useBuildingCamera>]
   'camera-disposed': []
+  'scene-ready': [buildingId: string]
 }>()
 
 const canvasRef = useTemplateRef<HTMLDivElement>('canvas')
@@ -48,6 +49,7 @@ const showBuilding = async (buildingId: string, floors: Floor[]) => {
       await scenes.renderBuildingScene(buildingId, floors, props.devices)
     }
     attachBuilding(buildingId)
+    emit('scene-ready', buildingId)
   } finally {
     isRendering.value = false
   }

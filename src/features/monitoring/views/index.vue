@@ -74,6 +74,7 @@ const devices = computed(() => {
       :devices="devices"
       @camera-ready="cameraRegistry.register"
       @camera-disposed="cameraRegistry.unregister"
+      @scene-ready="gateway.onSceneReady"
       class="relative isolate z-0"
     />
 
