@@ -11,7 +11,7 @@ export interface FloorScene {
 
 const MAX_CACHE_SIZE = 5
 const CIRCLE_RATIO = 0.2
-const CIRCLE_COLOR = 'transparent'
+const DEFAULT_CIRCLE_COLOR = 'transparent'
 
 const floorScenes = new Map<string, FloorScene>()
 const canvasRenderer = L.canvas()
@@ -80,7 +80,7 @@ const addOverlay = (scene: FloorScene, floor: Floor) => {
   scene.layerGroup.addLayer(overlay)
 }
 
-const addDevice = (scene: FloorScene, device: Device, floor: Floor) => {
+const addDeviceMarker = (scene: FloorScene, device: Device, floor: Floor, color?: string) => {
   const position = solveLatLng(device, floor)
 
   const marker = L.marker(position).bindTooltip(
@@ -89,7 +89,7 @@ const addDevice = (scene: FloorScene, device: Device, floor: Floor) => {
   const circle = L.circle(position, {
     radius: solveRadius(floor),
     renderer: canvasRenderer,
-    color: CIRCLE_COLOR,
+    color: color ?? DEFAULT_CIRCLE_COLOR,
   })
 
   scene.markers.set(device.id, marker)
@@ -97,14 +97,18 @@ const addDevice = (scene: FloorScene, device: Device, floor: Floor) => {
   scene.layerGroup.addLayer(marker).addLayer(circle)
 }
 
-const renderFloorScene = async (floor: Floor, devices: Device[]): Promise<void> => {
+const renderFloorScene = async (
+  floor: Floor,
+  devices: Device[],
+  colorOf: (deviceId: string) => string | undefined,
+): Promise<void> => {
   const scene = getOrCreateFloorScene(floor.id)
   if (scene.overlay) return
 
   scene.isLoading = true
   try {
     addOverlay(scene, floor)
-    for (const device of devices) addDevice(scene, device, floor)
+    for (const device of devices) addDeviceMarker(scene, device, floor, colorOf(device.id))
   } finally {
     scene.isLoading = false
   }

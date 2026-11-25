@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useColorStore } from '@/features/spatial-stage/stores/color.store'
 import type { Device, Floor } from '@/shared/types/entity.type'
 import { nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useFloorCamera } from '../composables/use-camera'
@@ -15,6 +16,8 @@ const emit = defineEmits<{
   'camera-disposed': []
   'scene-ready': [floorId: string]
 }>()
+
+const colorStore = useColorStore()
 
 const canvasRef = useTemplateRef<HTMLDivElement>('canvas')
 const isReady = ref(false)
@@ -49,7 +52,7 @@ const showFloor = async (floor: Floor) => {
     if (scenes.isFloorLoading(floor.id)) {
       await waitUntilSceneReady(floor.id)
     } else if (!scenes.hasFloorScene(floor.id)) {
-      await scenes.renderFloorScene(floor, props.devices)
+      await scenes.renderFloorScene(floor, props.devices, colorStore.deviceColor)
     }
     attachFloor(floor)
     emit('scene-ready', floor.id)

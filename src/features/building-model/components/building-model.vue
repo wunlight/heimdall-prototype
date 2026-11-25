@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useColorStore } from '@/features/spatial-stage/stores/color.store'
 import type { Device, Floor } from '@/shared/types/entity.type'
 import { nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useBuildingCamera } from '../composables/use-camera'
@@ -16,6 +17,8 @@ const emit = defineEmits<{
   'camera-disposed': []
   'scene-ready': [buildingId: string]
 }>()
+
+const colorStore = useColorStore()
 
 const canvasRef = useTemplateRef<HTMLDivElement>('canvas')
 const isRendering = ref(false)
@@ -46,7 +49,7 @@ const showBuilding = async (buildingId: string, floors: Floor[]) => {
     if (scenes.isBuildingLoading(buildingId)) {
       await waitUntilSceneReady(buildingId)
     } else if (!scenes.hasBuildingScene(buildingId)) {
-      await scenes.renderBuildingScene(buildingId, floors, props.devices)
+      await scenes.renderBuildingScene(buildingId, floors, props.devices, colorStore.deviceColor)
     }
     attachBuilding(buildingId)
     emit('scene-ready', buildingId)

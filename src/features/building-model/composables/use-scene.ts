@@ -12,7 +12,8 @@ interface BuildingScene {
 const MAX_CACHE_SIZE = 5
 const FLOOR_HEIGHT = 16
 const BATCH_SIZE = 2
-const FLOOR_SPACE_COLOR = '#62748E'
+const DEFAULT_FLOOR_COLOR = '#62748E'
+const DEFAULT_DEVICE_COLOR = '#34d399'
 const DEFAULT_BASE_SCALE = 40
 
 const buildingScenes = new Map<string, BuildingScene>()
@@ -96,7 +97,7 @@ const createFloorSpace = (width: number, depth: number, yPos: number, floor: Flo
 
   const space = new THREE.Mesh(
     geometry,
-    new THREE.MeshBasicMaterial({ color: FLOOR_SPACE_COLOR, transparent: true, opacity: 0.3 }),
+    new THREE.MeshBasicMaterial({ color: DEFAULT_FLOOR_COLOR, transparent: true, opacity: 0.3 }),
   )
   space.position.y = yPos
   space.userData = { ...floor }
@@ -105,7 +106,7 @@ const createFloorSpace = (width: number, depth: number, yPos: number, floor: Flo
     new THREE.LineSegments(
       new THREE.EdgesGeometry(geometry),
       new THREE.LineBasicMaterial({
-        color: FLOOR_SPACE_COLOR,
+        color: DEFAULT_FLOOR_COLOR,
         linewidth: 3,
         transparent: true,
         opacity: 0.8,
@@ -116,10 +117,16 @@ const createFloorSpace = (width: number, depth: number, yPos: number, floor: Flo
   return space
 }
 
-const createDeviceMarker = (device: Device, yPos: number, width: number, depth: number) => {
+const createDeviceMarker = (
+  device: Device,
+  yPos: number,
+  width: number,
+  depth: number,
+  color?: string,
+) => {
   const marker = new THREE.Mesh(
     new THREE.SphereGeometry(0.75, 16, 16),
-    new THREE.MeshBasicMaterial({ color: '#00c950' }),
+    new THREE.MeshBasicMaterial({ color: color ?? DEFAULT_DEVICE_COLOR }),
   )
   marker.position.set((device.x - 0.5) * width, yPos + 0.5, (1 - device.y - 0.5) * depth)
   marker.userData = { ...device }
@@ -133,6 +140,7 @@ const addFloorLayer = async (
   index: number,
   devices: Device[],
   baseScale: number,
+  colorOf: (deviceId: string) => string | undefined,
 ) => {
   const yPos = index * FLOOR_HEIGHT
   const { mesh, width, depth } = await createFloorPlane(
@@ -151,7 +159,7 @@ const addFloorLayer = async (
 
   const markers = new Map<string, THREE.Mesh>()
   for (const device of devices) {
-    const marker = createDeviceMarker(device, yPos, width, depth)
+    const marker = createDeviceMarker(device, yPos, width, depth, colorOf(device.id))
     building.scene.add(marker)
     markers.set(String(device.id), marker)
   }
@@ -163,6 +171,7 @@ const renderFloorsInBatches = async (
   floors: Floor[],
   devicesByFloor: Map<string, Device[]>,
   baseScale: number,
+  colorOf: (deviceId: string) => string | undefined,
 ) => {
   const loader = new THREE.TextureLoader()
 
@@ -177,6 +186,7 @@ const renderFloorsInBatches = async (
           start + i,
           devicesByFloor.get(floor.id) ?? [],
           baseScale,
+          colorOf,
         ).catch((e) => console.warn(`Failed to load floor ${floor.name}:`, e)),
       ),
     )
@@ -187,6 +197,7 @@ const renderBuildingScene = async (
   buildingId: string,
   floors: Floor[],
   devices: Map<string, Device[]>,
+  colorOf: (deviceId: string) => string | undefined,
   baseScale: number = DEFAULT_BASE_SCALE,
 ): Promise<void> => {
   const building = getOrCreateBuildingScene(buildingId)
@@ -194,7 +205,7 @@ const renderBuildingScene = async (
 
   building.isLoading = true
   try {
-    await renderFloorsInBatches(building, floors, devices, baseScale)
+    await renderFloorsInBatches(building, floors, devices, baseScale, colorOf)
   } finally {
     building.isLoading = false
   }
