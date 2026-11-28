@@ -7,16 +7,30 @@ interface ImageDimensions {
   height: number
 }
 
+const IMAGE_TIMEOUT_MS = 8_000
+
 const readImageDimensions = (src: string): Promise<ImageDimensions | null> => {
   return new Promise((resolve) => {
     const image = new Image()
+    const timer = setTimeout(() => {
+      console.error('[blueprint] timeout', src)
+      resolve(null)
+    }, IMAGE_TIMEOUT_MS)
+
     image.onload = () => {
-      resolve({
-        width: image.naturalWidth,
-        height: image.naturalHeight,
-      })
+      clearTimeout(timer)
+      const { naturalWidth: width, naturalHeight: height } = image
+      if (width <= 0 || height <= 0) {
+        console.error('[blueprint] invalid dimension', src, { width, height })
+        return resolve(null)
+      }
+      resolve({ width, height })
     }
-    image.onerror = () => resolve(null)
+    image.onerror = (e) => {
+      clearTimeout(timer)
+      console.error('[blueprint] failed to load', src, e)
+      resolve(null)
+    }
     image.src = src
   })
 }
@@ -46,12 +60,11 @@ export const hydrateEntities = async (updateMsg: (msg: string) => void) => {
   }
 
   updateMsg('Reading floor blueprint dimensions...')
-  const hydratedFloors = await Promise.all(
+  floors = await Promise.all(
     floors.map(async (floor) => {
       if (!floor.blueprint_url) return floor
 
       const dimensions = await readImageDimensions(floor.blueprint_url)
-
       if (!dimensions) return floor
 
       return {
@@ -61,7 +74,6 @@ export const hydrateEntities = async (updateMsg: (msg: string) => void) => {
       }
     }),
   )
-  floors = hydratedFloors
 
   updateMsg('Hydrating store...')
   await entityStore.hydrate(buildings, floors, devices)
