@@ -181,9 +181,6 @@ importers:
       '@primeuix/themes':
         specifier: ^3.1.0
         version: 3.1.0
-      '@vue-leaflet/vue-leaflet':
-        specifier: ^0.10.1
-        version: 0.10.1(@types/leaflet@1.9.22)(leaflet@1.9.4)(typescript@6.0.3)
       dexie:
         specifier: ^4.4.7
         version: 4.4.7
@@ -1130,15 +1127,6 @@ packages:
       typescript: <7
     peerDependenciesMeta:
       typescript:
-        optional: true
-
-  '@vue-leaflet/vue-leaflet@0.10.1':
-    resolution: {integrity: sha512-RNEDk8TbnwrJl8ujdbKgZRFygLCxd0aBcWLQ05q/pGv4+d0jamE3KXQgQBqGAteE1mbQsk3xoNcqqUgaIGfWVg==}
-    peerDependencies:
-      '@types/leaflet': ^1.5.7
-      leaflet: ^1.6.0
-    peerDependenciesMeta:
-      '@types/leaflet':
         optional: true
 
   '@vue-macros/common@3.1.4':
@@ -3007,15 +2995,6 @@ snapshots:
       vscode-uri: 3.2.0
     optionalDependencies:
       typescript: 6.0.3
-
-  '@vue-leaflet/vue-leaflet@0.10.1(@types/leaflet@1.9.22)(leaflet@1.9.4)(typescript@6.0.3)':
-    dependencies:
-      leaflet: 1.9.4
-      vue: 3.5.44(typescript@6.0.3)
-    optionalDependencies:
-      '@types/leaflet': 1.9.22
-    transitivePeerDependencies:
-      - typescript
 
   '@vue-macros/common@3.1.4(vue@3.5.44(typescript@6.0.3))':
     dependencies:
