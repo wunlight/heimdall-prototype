@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import DevicesTable from '@/features/monitoring/components/devices-table.vue'
+import DevicesTable from '@/features/monitoring/components/widgets/devices-table.vue'
 import ControlGuide from '@/features/spatial-stage/components/control-guide.vue'
 import SpatialStage from '@/features/spatial-stage/components/spatial-stage.vue'
 import { createCameraRegistry } from '@/features/spatial-stage/composables/create-camera-registry'
