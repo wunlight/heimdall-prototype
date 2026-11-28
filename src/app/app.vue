@@ -1,22 +1,17 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import AppErrorScreen from './app-error-screen.vue'
-import AppLoadingScreen from './app-loading-screen.vue'
-import { useAppSetup } from './setup/index.ts'
-import { INITIAL_TASKS } from './setup/initial-tasks.ts'
+import AppError from './app-error.vue'
+import AppLoading from './app-loading.vue'
+import { useAppTask } from './task/composables/use-app-task.ts'
+import { INITIAL_TASKS } from './task/constants/task.ts'
 
-const { isLoading, hasError, progress, progressMessage, errorMessage, initialize } =
-  useAppSetup(INITIAL_TASKS)
+const { loading, progress, progressMessage, error, errorMessage, initialize } = useAppTask()
 
-onMounted(async () => {
-  await initialize()
-})
+onMounted(() => initialize(INITIAL_TASKS))
 </script>
 
 <template>
-  <AppLoadingScreen v-if="isLoading" :progress="progress" :message="progressMessage" />
-
-  <AppErrorScreen v-else-if="hasError" :message="errorMessage" />
-
+  <AppLoading v-if="loading" :progress="progress" :message="progressMessage" />
+  <AppError v-else-if="error" :message="errorMessage" />
   <RouterView v-else />
 </template>

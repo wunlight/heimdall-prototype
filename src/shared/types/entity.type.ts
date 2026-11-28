@@ -1,12 +1,8 @@
-import type { STATUS_TYPES } from '../constants/status-type'
-
-export type StatusType = (typeof STATUS_TYPES)[number]
+export type StatusType = 'normal' | 'offline' | 'warning' | 'alarm'
 
 export interface Building {
   id: string
   name: string
-  lat: number
-  lng: number
 }
 
 export interface Floor {
@@ -23,14 +19,14 @@ export interface Device {
   id: string
   floor_id: string
   type: string
-  status: StatusType
   x: number
   y: number
 }
 
-export interface Event {
+export interface DeviceEvent {
   id: string
   device_id: string
   type: StatusType
-  created_at: string
+  created_at: number
+  seq: number
 }

@@ -1,339 +1,162 @@
 <script setup lang="ts">
-import SpatialViewer from '@/features/spatial-viewer/components/spatial-viewer.vue'
-import { useDeviceMarkerSynchronizer } from '@/features/spatial-viewer/composables/use-device-marker-synchronizer'
-import { useSpatialCommandQueue } from '@/features/spatial-viewer/composables/use-spatial-command-queue'
-import type { GeoCoordinate, Vector3 } from '@/features/spatial-viewer/types/camera.type.ts'
-import type { SpatialCommand, SpatialViewMode } from '@/features/spatial-viewer/types/spatial.type'
-import {
-  calculate2DWorldTarget,
-  calculate3DWorldTarget,
-} from '@/features/spatial-viewer/utils/spatial-world.ts'
-import type { Building, Device, Floor } from '@/shared/types/entity.type'
-import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef } from 'vue'
-import SimulationDialog from '../components/simulation-dialog.vue'
-import { useEventProcessor } from '../composables/event-processor.ts'
-import { mockWS } from '../services/mock-ws.service.ts'
-import { useSpatialCache } from '../stores/spatial.cache'
+import DevicesTable from '@/features/monitoring/components/devices-table.vue'
+import ControlGuide from '@/features/spatial-stage/components/control-guide.vue'
+import SpatialStage from '@/features/spatial-stage/components/spatial-stage.vue'
+import { createCameraRegistry } from '@/features/spatial-stage/composables/create-camera-registry'
+import { useSpatialGateway } from '@/features/spatial-stage/composables/use-spatial-gateway'
+import type { SpatialViewMode } from '@/features/spatial-stage/types/state.type'
+import { toCameraTarget } from '@/features/spatial-stage/utils/device-target'
+import { useEntityStore } from '@/shared/stores/entity.store'
+import type { Device, Floor } from '@/shared/types/entity.type'
+import { computed, onMounted, ref, watch } from 'vue'
+import BuildingList from '../components/widgets/building-list.vue'
+import FloorList from '../components/widgets/floor-list.vue'
 
-const store = useSpatialCache()
-const { enqueueCommand } = useSpatialCommandQueue()
+const entity = useEntityStore()
+const cameraRegistry = createCameraRegistry()
+const gateway = useSpatialGateway(cameraRegistry)
 
-const spatialViewerRef = useTemplateRef('spatial-viewer')
+const selectedDevice = ref<Device | null>(null)
 
-const viewMode = ref<SpatialViewMode>('3D')
-const selectedBuilding = ref<Building | null>(null)
-const selectedFloor = ref<Floor | null>(null)
+const floors = computed(() =>
+  Object.values(entity.floors).filter((f) => f.building_id === gateway.state.buildingId),
+)
 
-const activeDevices = computed(() => {
-  if (viewMode.value === '3D') {
-    return selectedBuilding.value
-      ? store.getAbnormalDevicesByBuildingId(selectedBuilding.value.id)
-      : []
-  }
-  return selectedFloor.value ? store.getAbnormalDevicesByFloorId(selectedFloor.value.id) : []
+const floorsOf = (bId: string) => Object.values(entity.floors).filter((f) => f.building_id === bId)
+
+const devices = computed(() => {
+  const floorIds = new Set(floors.value.map((f) => f.id))
+  return Object.values(entity.devices).filter((d) => floorIds.has(d.floor_id))
 })
 
-function selectBuilding(building: Building) {
-  selectedBuilding.value = building
+const visibleDevices = computed(() => {
+  const floorIds =
+    gateway.state.viewMode === '2d'
+      ? new Set(gateway.state.floorId ? [gateway.state.floorId] : [])
+      : new Set(floors.value.map((f) => f.id))
 
-  const floors = store.getFloorsByBuildingId(building.id)
-  if (viewMode.value === '2D') {
-    selectedFloor.value = floors[0] ?? null
-  } else {
-    selectedFloor.value =
-      floors.find((floor) => floor.id === selectedFloor.value?.id) ?? floors[0] ?? null
-  }
-
-  initializeBuildingMarkerStates(building.id)
-}
-
-function createCommandId(): string {
-  return `monitoring-${Date.now()}-${crypto.randomUUID()}`
-}
-
-function resolveDeviceContext(device: Device) {
-  for (const [buildingId, floors] of store.cachedFloors) {
-    const floorIndex = floors.findIndex((floor) => floor.id === device.floor_id)
-
-    if (floorIndex !== -1) {
-      return {
-        buildingId,
-        floor: floors[floorIndex]!,
-        floorIndex,
-      }
-    }
-  }
-
-  return null
-}
-
-async function focusDevice(device: Device): Promise<void> {
-  const context = resolveDeviceContext(device)
-
-  if (!context) {
-    console.warn(`Unable to resolve device context: ${device.id}`)
-    return
-  }
-
-  const { buildingId, floor, floorIndex } = context
-
-  const worldTarget =
-    viewMode.value === '3D'
-      ? calculate3DWorldTarget(device, floor, floorIndex)
-      : calculate2DWorldTarget(device, floor)
-
-  const command: SpatialCommand =
-    viewMode.value === '3D'
-      ? {
-          id: createCommandId(),
-          timestamp: Date.now(),
-          source: 'USER',
-          type: 'BUILDING_CAMERA',
-          movement: 'ABSOLUTE',
-          context: {
-            buildingId,
-            floorId: floor.id,
-            deviceId: device.id,
-          },
-          payload: {
-            target: worldTarget as Vector3,
-            distance: 48,
-            duration: 1000,
-          },
-        }
-      : {
-          id: createCommandId(),
-          timestamp: Date.now(),
-          source: 'USER',
-          type: 'FLOOR_CAMERA',
-          movement: 'ABSOLUTE',
-          context: {
-            buildingId,
-            floorId: floor.id,
-            deviceId: device.id,
-          },
-          payload: {
-            center: worldTarget as GeoCoordinate,
-            zoom: 2,
-            duration: 1000,
-          },
-        }
-
-  await enqueueCommand(command)
-}
-
-async function initializeBuildingMarkerStates(buildingId: string): Promise<void> {
-  const floors = store.getFloorsByBuildingId(buildingId)
-
-  const allDevices: Device[] = []
-  for (const floor of floors) {
-    const floorDevices = store.getDevicesByFloorId(floor.id) ?? []
-    allDevices.push(...floorDevices)
-  }
-
-  const synchronizer = useDeviceMarkerSynchronizer(buildingId, allDevices, {
-    enqueueCommand,
-  } as any)
-
-  await synchronizer.initializeMarkerStates()
-}
-
-async function dispatchSpatialCommand(command: SpatialCommand): Promise<void> {
-  const viewer = spatialViewerRef.value
-  if (!viewer) {
-    throw new Error('SpatialViewer is not initialized')
-  }
-  await viewer.executeSpatialCommand(command)
-}
-
-const processor = useEventProcessor({
-  devices: store.cachedDevices,
-  floors: store.cachedFloors,
-  dispatchDeviceColor: async (buildingId, floorId, deviceId, color) => {
-    await dispatchSpatialCommand({
-      id: createCommandId(),
-      timestamp: Date.now(),
-      source: 'WEBSOCKET',
-      type: 'DEVICE_COLOR',
-      context: {
-        buildingId,
-        floorId,
-        deviceId,
-      },
-      payload: { color },
+  return Object.values(entity.devices)
+    .filter((d) => floorIds.has(d.floor_id))
+    .flatMap((device) => {
+      const floor = entity.floors[device.floor_id]
+      if (!floor) return []
+      return [
+        {
+          ...device,
+          buildingName: entity.buildings[floor.building_id]?.name ?? '-',
+          floorName: floor.name,
+        },
+      ]
     })
-  },
-  dispatchFloorColor: async (buildingId, floorId, color) => {
-    if (viewMode.value === '3D') {
-      await dispatchSpatialCommand({
-        id: createCommandId(),
-        timestamp: Date.now(),
-        source: 'WEBSOCKET',
-        type: 'FLOOR_COLOR',
-        context: {
-          buildingId,
-          floorId,
-        },
-        payload: { color },
-      })
-    }
-  },
-  dispatchDeviceCamera: async (buildingId, floorId, deviceId, worldTarget) => {
-    if (viewMode.value === '3D') {
-      await dispatchSpatialCommand({
-        id: createCommandId(),
-        timestamp: Date.now(),
-        source: 'WEBSOCKET',
-        type: 'BUILDING_CAMERA',
-        movement: 'ABSOLUTE',
-        context: { buildingId, floorId, deviceId },
-        payload: {
-          target: worldTarget as Vector3,
-          distance: 48,
-          duration: 1000,
-        },
-      })
-    } else if (viewMode.value === '2D') {
-      await dispatchSpatialCommand({
-        id: createCommandId(),
-        timestamp: Date.now(),
-        source: 'WEBSOCKET',
-        type: 'FLOOR_CAMERA',
-        movement: 'ABSOLUTE',
-        context: { buildingId, floorId, deviceId },
-        payload: {
-          center: worldTarget as GeoCoordinate,
-          zoom: 2,
-          duration: 1000,
-        },
-      })
-    }
-  },
 })
 
-let unsubscribe: (() => void) | undefined
-let eventProcessing = Promise.resolve()
-
-const handleIncomingEvent = (event: Parameters<typeof processor.processEvent>[0]) => {
-  eventProcessing = eventProcessing
-    .then(() => processor.processEvent(event, viewMode.value))
-    .catch((error) => {
-      console.error('Failed to process monitoring event:', error)
-    })
+const changeViewMode = (mode: SpatialViewMode) => {
+  gateway.switchView(mode)
+  const next = mode === '2d' ? floors.value[0] : undefined
+  if (next) gateway.selectFloor(next.id)
 }
 
-const onSpatialReady = async () => {
-  await nextTick()
-  if (store.buildings[0]) {
-    selectBuilding(store.buildings[0])
+const selectBuilding = (bId: string) => {
+  gateway.selectBuilding(bId)
+  if (gateway.state.viewMode === '2d') {
+    const next: Floor | undefined = floorsOf(bId)[0]
+    if (next) gateway.selectFloor(next.id)
   }
 }
 
 onMounted(() => {
-  unsubscribe = mockWS.onMessage(handleIncomingEvent)
+  const defaultFloor = Object.values(entity.floors)[0]
+  if (defaultFloor) selectBuilding(defaultFloor.building_id)
 })
 
-onUnmounted(() => {
-  unsubscribe?.()
+watch(selectedDevice, (newDevice) => {
+  if (!newDevice) return
+
+  const floor = entity.floors[newDevice.floor_id]
+  if (!floor) return
+
+  if (gateway.state.buildingId !== floor.building_id) gateway.selectBuilding(floor.building_id)
+  if (gateway.state.viewMode === '2d' && gateway.state.floorId !== floor.id)
+    gateway.selectFloor(floor.id)
+
+  gateway.moveCamera(toCameraTarget(gateway.state.viewMode, newDevice, floor))
+  selectedDevice.value = null
 })
 </script>
 
 <template>
-  <div class="relative h-svh overflow-hidden pointer-events-none">
-    <SpatialViewer
-      ref="spatial-viewer"
-      :buildings="store.buildings"
-      :floors="store.cachedFloors"
-      :devices="store.cachedDevices"
-      v-model:view-mode="viewMode"
-      v-model:selected-building="selectedBuilding"
-      v-model:selected-floor="selectedFloor"
-      class="relative z-0"
-      @vue:mounted="onSpatialReady"
+  <div class="relative h-dvh overflow-hidden">
+    <SpatialStage
+      :view-mode="gateway.state.viewMode"
+      :building-id="gateway.state.buildingId"
+      :floor-id="gateway.state.floorId"
+      :floors="floors"
+      :devices="devices"
+      @camera-ready="cameraRegistry.register"
+      @camera-disposed="cameraRegistry.unregister"
+      @scene-ready="gateway.onSceneReady"
+      class="relative isolate z-0"
     />
 
-    <div class="absolute left-3 top-3 z-1">
+    <div
+      class="absolute isolate inset-3 z-1 grid grid-cols-10 grid-rows-6 gap-1.5 pointer-events-none"
+    >
+      <div class="col-span-3 row-span-2 flex items-start gap-1.5 h-full overflow-hidden">
+        <BuildingList
+          :buildings="entity.buildings"
+          :selected-id="gateway.state.buildingId"
+          @select="selectBuilding"
+        />
+        <div
+          class="flex gap-1 p-1 size-fit bg-zinc-900 border border-zinc-700 rounded-lg pointer-events-auto"
+        >
+          <Button
+            :variant="gateway.state.viewMode === '3d' ? '' : 'text'"
+            @click="changeViewMode('3d')"
+            label="3D"
+            severity="contrast"
+            size="small"
+            class="h-6!"
+          />
+          <Button
+            :variant="gateway.state.viewMode === '2d' ? '' : 'text'"
+            @click="changeViewMode('2d')"
+            label="2D"
+            severity="contrast"
+            size="small"
+            class="h-6!"
+          />
+        </div>
+      </div>
+
+      <div class="col-span-5" />
+
       <div
-        class="flex flex-col gap-2 p-2 max-h-56 w-64 bg-surface-900 rounded-md overflow-y-auto pointer-events-auto"
+        v-if="gateway.state.viewMode === '2d' && floors.length > 0"
+        class="col-span-2 row-span-2 flex items-start justify-end"
       >
-        <Button
-          v-for="item in store.buildings"
-          :key="item.id"
-          :label="item.name"
-          icon="icon-[tabler--building]"
-          :severity="selectedBuilding?.id === item.id ? 'contrast' : 'secondary'"
-          class="shrink-0 justify-start!"
-          @click="selectBuilding(item)"
+        <FloorList
+          :floors="floors"
+          :selected-id="gateway.state.floorId"
+          @select="gateway.selectFloor"
         />
       </div>
-    </div>
 
-    <div class="absolute left-3 bottom-3 z-1">
-      <div
-        class="flex flex-col p-2 max-h-56 w-96 bg-surface-900 rounded-md overflow-y-auto pointer-events-auto"
-      >
-        <p class="px-2 py-1.5 text-surface-500">Active Devices</p>
-        <Divider class="my-2!" />
-        <div class="flex flex-col gap-2 h-full overflow-y-auto">
-          <div v-for="item in activeDevices" :key="item.id">
-            <Button severity="contrast" text fluid class="justify-start!" @click="focusDevice(item)"
-              >{{ item.status }} - {{ item.type }}</Button
-            >
-          </div>
+      <div class="row-span-2 col-span-full" />
+
+      <div class="col-span-5 row-span-2 flex items-end overflow-hidden">
+        <div
+          class="group flex flex-col p-1.5 hover:p-0 size-fit hover:size-full bg-zinc-900 border border-zinc-700 rounded-lg transition-all duration-300 origin-bottom-left [interpolate-size:allow-keywords] overflow-hidden pointer-events-auto"
+        >
+          <DevicesTable
+            v-model:selected="selectedDevice"
+            :devices="visibleDevices"
+            class="hidden! group-hover:block!"
+          />
+          <span class="icon-[tabler--alarm-smoke] block group-hover:hidden size-5" />
         </div>
       </div>
     </div>
-
-    <div class="absolute right-3 top-3 z-1">
-      <div class="flex gap-1 p-1 h-fit bg-surface-900 rounded-md pointer-events-auto">
-        <Button
-          label="3D"
-          icon="icon-[tabler--cube] text-base!"
-          severity="contrast"
-          size="small"
-          class="shrink-0!"
-          :text="viewMode !== '3D'"
-          @click="viewMode = '3D'"
-        />
-        <Button
-          label="2D"
-          icon="icon-[tabler--align-box-center-middle] text-base!"
-          severity="contrast"
-          size="small"
-          class="shrink-0!"
-          :text="viewMode !== '2D'"
-          @click="viewMode = '2D'"
-        />
-      </div>
-    </div>
-
-    <div class="absolute right-3 top-1/2 -translate-y-1/2 z-1">
-      <div
-        v-if="viewMode === '2D' && selectedBuilding"
-        class="group/floor-list flex flex-col gap-2 p-2 max-h-56 w-12 hover:w-48 bg-surface-900 rounded-md transform-all duration-200 hover:overflow-y-auto pointer-events-auto"
-      >
-        <Button
-          v-for="item in store.getFloorsByBuildingId(selectedBuilding.id)"
-          :key="item.id"
-          :label="item.name"
-          icon="icon-[tabler--layout-board]"
-          :severity="selectedFloor?.id === item.id ? 'contrast' : 'secondary'"
-          @click="selectedFloor = item"
-          :pt="{
-            root: 'shrink-0! flex! justify-start! py-0.5!',
-            label: 'hidden group-hover/floor-list:block',
-            icon: 'hidden group-hover/floor-list:block',
-          }"
-        />
-      </div>
-    </div>
-
-    <div class="absolute right-3 bottom-3 z-1">
-      <SimulationDialog>
-        <template #trigger="{ show }">
-          <Button icon="icon-[tabler--flask]" class="pointer-events-auto" @click="show" />
-        </template>
-      </SimulationDialog>
-    </div>
+    <ControlGuide class="absolute right-3 bottom-3 z-1" />
   </div>
 </template>
