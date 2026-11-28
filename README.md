@@ -47,6 +47,4 @@ The following components are currently under development:
 
 https://heimdall-prototype.vercel.app/
 
-The prototype includes an interactive camera movement demonstration that can be triggered through the Run Camera Demo button.
-
-Note: Heimdall is currently a development prototype. Some interactions and automated workflows are still under development.
+Note: Heimdall is currently in development. Some interactions and automated workflows are still under development.
