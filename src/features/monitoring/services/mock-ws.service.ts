@@ -6,36 +6,51 @@ import type { SimulationEventItem } from '../types/event.type'
 type EventListener = (data: Event) => void
 
 class MockWebSocketService {
-  private listeners: EventListener[] = []
-  private timer: number | null = null
-  private maxStoredEvents: number = 50
-  private isSimulating: boolean = false
+  private listeners = new Set<EventListener>()
+  private maxStoredEvents = 50
+  private abortController: AbortController | null = null
 
-  public onMessage(cb: EventListener): () => void {
-    this.listeners.push(cb)
+  public onMessage(listener: EventListener): () => void {
+    this.listeners.add(listener)
+
     return () => {
-      this.listeners = this.listeners.filter((cb) => cb !== cb)
+      this.listeners.delete(listener)
     }
   }
 
   private emit(event: Event): void {
-    this.listeners.forEach((cb) => cb(event))
+    this.listeners.forEach((listener) => listener(event))
   }
 
   public async startSimulation(simulationItems: SimulationEventItem[]): Promise<void> {
-    console.log([...simulationItems])
-    if (this.isSimulating) return
-    this.isSimulating = true
+    if (this.abortController) return
+
+    const controller = new AbortController()
+    this.abortController = controller
 
     try {
       for (const item of simulationItems) {
-        console.log(item)
+        if (controller.signal.aborted) break
         if (!item.deviceId) continue
 
         const delayMs = Number(item.delay) || 0
+
         if (delayMs > 0) {
-          await new Promise((resolve) => setTimeout(resolve, delayMs))
+          await new Promise<void>((resolve) => {
+            const timeout = setTimeout(resolve, delayMs)
+
+            controller.signal.addEventListener(
+              'abort',
+              () => {
+                clearTimeout(timeout)
+                resolve()
+              },
+              { once: true },
+            )
+          })
         }
+
+        if (controller.signal.aborted) break
 
         const newEvent: Event = {
           id: item.eventId || `evt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
@@ -47,32 +62,36 @@ class MockWebSocketService {
         await addEventLog(newEvent)
         await this.trimEventsLimit()
 
+        if (controller.signal.aborted) break
+
         this.emit(newEvent)
       }
-    } catch (e) {
-      console.error('Failed to run simulation:', e)
+    } catch (error) {
+      console.error('Failed to run simulation:', error)
     } finally {
-      this.isSimulating = false
+      if (this.abortController === controller) {
+        this.abortController = null
+      }
     }
   }
 
   public stopSimulation(): void {
-    if (this.timer) {
-      clearInterval(this.timer)
-      this.timer = null
-    }
+    this.abortController?.abort()
+    this.abortController = null
   }
 
   private async trimEventsLimit(): Promise<void> {
     const count = await db.events.count()
-    if (count > this.maxStoredEvents) {
-      const allEvents = await db.events.orderBy('created_at').toArray()
 
-      const excessCount = allEvents.length - this.maxStoredEvents
-      if (excessCount > 0) {
-        const idsToRemove = allEvents.slice(0, excessCount).map((e) => e.id)
-        await db.events.bulkDelete(idsToRemove)
-      }
+    if (count <= this.maxStoredEvents) return
+
+    const allEvents = await db.events.orderBy('created_at').toArray()
+    const excessCount = allEvents.length - this.maxStoredEvents
+
+    if (excessCount > 0) {
+      const idsToRemove = allEvents.slice(0, excessCount).map((event) => event.id)
+
+      await db.events.bulkDelete(idsToRemove)
     }
   }
 }

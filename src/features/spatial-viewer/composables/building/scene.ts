@@ -1,5 +1,6 @@
 import type { Device, Floor } from '@/shared/types/entity.type'
 import * as THREE from 'three'
+import { useDeviceMarkerStateStore } from '../../stores/device-marker-state.store'
 
 export interface BuildingScene {
   scene: THREE.Scene
@@ -47,6 +48,8 @@ export function useBuildingScene() {
     }
     return buildingScenes.get(buildingId)!
   }
+
+  const markerStore = useDeviceMarkerStateStore()
 
   const renderBuilding = async (
     buildingId: string,
@@ -149,7 +152,9 @@ export function useBuildingScene() {
 
       const geometry = new THREE.SphereGeometry(0.75, 16, 16)
 
-      const material = new THREE.MeshBasicMaterial({ color: '#2B7FFF' })
+      const initialColor = markerStore.getDeviceMarkerColor(String(data.id)) || '#2B7FFF'
+
+      const material = new THREE.MeshBasicMaterial({ color: initialColor })
       const marker = new THREE.Mesh(geometry, material)
 
       marker.position.set(markerX, yPos + 0.5, markerZ)

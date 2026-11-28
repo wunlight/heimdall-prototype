@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import type { Camera2DPayload, Camera3DPayload } from '../types/camera.type'
+import type { BuildingCameraPayload, FloorCameraPayload } from '../types/camera.type'
 import type { CameraCommand, SpatialCommand } from '../types/spatial.type'
 
 interface QueueItem {
@@ -11,43 +11,29 @@ interface QueueItem {
   abortController?: AbortController
 }
 
+const isViewerReady = ref(false)
+let commandExecutor: ((command: SpatialCommand, signal: AbortSignal) => Promise<void>) | null = null
+const queue = ref<QueueItem[]>([])
+const currentCommand = ref<QueueItem | null>(null)
+const isProcessing = ref(false)
+
 export function useSpatialCommandQueue() {
-  const queue = ref<QueueItem[]>([])
-  const currentCommand = ref<QueueItem | null>(null)
-  const isProcessing = ref(false)
-
-  function isValidCamera3DPayload(payload: Camera3DPayload): boolean {
-    if (payload.target && !isValidVector3(payload.target)) {
-      return false
-    }
-
-    if (payload.azimuth !== undefined && !Number.isFinite(payload.azimuth)) {
-      return false
-    }
-
-    if (payload.elevation !== undefined && !Number.isFinite(payload.elevation)) {
-      return false
-    }
-
+  function isValidBuildingCameraPayload(payload: BuildingCameraPayload): boolean {
+    if (payload.target && !isValidVector3(payload.target)) return false
+    if (payload.azimuth !== undefined && !Number.isFinite(payload.azimuth)) return false
+    if (payload.elevation !== undefined && !Number.isFinite(payload.elevation)) return false
     if (
       payload.distance !== undefined &&
       (!Number.isFinite(payload.distance) || payload.distance <= 0)
-    ) {
+    )
       return false
-    }
-
     return true
   }
 
-  function isValidCamera2DPayload(payload: Camera2DPayload): boolean {
-    if (payload.center && !isValidGeoCoordinate(payload.center)) {
+  function isValidFloorCameraPayload(payload: FloorCameraPayload): boolean {
+    if (payload.center && !isValidGeoCoordinate(payload.center)) return false
+    if (payload.zoom !== undefined && (!Number.isFinite(payload.zoom) || payload.zoom <= 0))
       return false
-    }
-
-    if (payload.zoom !== undefined && (!Number.isFinite(payload.zoom) || payload.zoom <= 0)) {
-      return false
-    }
-
     return true
   }
 
@@ -57,12 +43,14 @@ export function useSpatialCommandQueue() {
 
   function validateCommand(command: SpatialCommand): boolean {
     switch (command.type) {
-      case 'CAMERA_3D':
-        return isValidCamera3DPayload(command.payload)
+      case 'BUILDING_CAMERA':
+        return isValidBuildingCameraPayload(command.payload)
 
-      case 'CAMERA_2D':
-        return isValidCamera2DPayload(command.payload)
+      case 'FLOOR_CAMERA':
+        return isValidFloorCameraPayload(command.payload)
 
+      case 'FLOOR_COLOR':
+      case 'DEVICE_COLOR':
       case 'SWITCH_VIEW':
         return true
 
@@ -89,11 +77,7 @@ export function useSpatialCommandQueue() {
       typeof coord.lat === 'number' &&
       typeof coord.lng === 'number' &&
       !isNaN(coord.lat) &&
-      !isNaN(coord.lng) &&
-      coord.lat >= -90 &&
-      coord.lat <= 90 &&
-      coord.lng >= -180 &&
-      coord.lng <= 180
+      !isNaN(coord.lng)
     )
   }
 
@@ -111,7 +95,7 @@ export function useSpatialCommandQueue() {
 
   function isCoalescingBoundary(command: SpatialCommand): boolean {
     if (command.type === 'SWITCH_VIEW') return true
-    if (command.type === 'CAMERA_3D' || command.type === 'CAMERA_2D') {
+    if (command.type === 'BUILDING_CAMERA' || command.type === 'FLOOR_CAMERA') {
       const cameraCmd = command as CameraCommand
       return cameraCmd.movement === 'RELATIVE'
     }
@@ -165,7 +149,7 @@ export function useSpatialCommandQueue() {
       abortController: new AbortController(),
     }
 
-    if (command.type === 'CAMERA_3D' || command.type === 'CAMERA_2D') {
+    if (command.type === 'BUILDING_CAMERA' || command.type === 'FLOOR_CAMERA') {
       const cameraCmd = command as CameraCommand
 
       if (cameraCmd.movement === 'ABSOLUTE') {
@@ -220,6 +204,7 @@ export function useSpatialCommandQueue() {
   async function processQueue() {
     if (isProcessing.value) return
     if (queue.value.length === 0) return
+    if (!isViewerReady.value) return
 
     isProcessing.value = true
 
@@ -263,9 +248,6 @@ export function useSpatialCommandQueue() {
     }
   }
 
-  let commandExecutor: ((command: SpatialCommand, signal: AbortSignal) => Promise<void>) | null =
-    null
-
   function setCommandExecutor(
     executor: (command: SpatialCommand, signal: AbortSignal) => Promise<void>,
   ) {
@@ -306,6 +288,13 @@ export function useSpatialCommandQueue() {
     }
   }
 
+  async function setViewerReady(ready: boolean) {
+    isViewerReady.value = ready
+    if (ready && queue.value.length > 0) {
+      await processQueue()
+    }
+  }
+
   return {
     enqueueCommand,
     clearQueue,
@@ -314,5 +303,6 @@ export function useSpatialCommandQueue() {
     queue,
     currentCommand,
     isProcessing,
+    setViewerReady,
   }
 }

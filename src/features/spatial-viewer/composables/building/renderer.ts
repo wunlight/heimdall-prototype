@@ -60,22 +60,19 @@ export function useBuildingRenderer(container: HTMLDivElement) {
   renderer.domElement.addEventListener('wheel', onWheelScroll, { passive: false })
 
   let currentScene: THREE.Scene | null = null
-  let animationFrame: number | null = null
 
   const animate = () => {
-    animationFrame = requestAnimationFrame(animate)
-    controls.update()
-    if (currentScene) {
-      renderer.render(currentScene, camera)
-    }
+    renderer.setAnimationLoop(() => {
+      controls.update()
+      if (currentScene) {
+        renderer.render(currentScene, camera)
+      }
+    })
   }
 
   const attachScene = (scene: THREE.Scene) => {
     currentScene = scene
-
-    if (animationFrame === null) {
-      animate()
-    }
+    animate()
   }
 
   const detachScene = () => {
@@ -83,13 +80,8 @@ export function useBuildingRenderer(container: HTMLDivElement) {
   }
 
   const dispose = () => {
-    if (animationFrame !== null) {
-      cancelAnimationFrame(animationFrame)
-      animationFrame = null
-    }
-
+    renderer.setAnimationLoop(null)
     renderer.domElement.removeEventListener('wheel', onWheelScroll)
-
     controls.dispose()
     renderer.dispose()
 

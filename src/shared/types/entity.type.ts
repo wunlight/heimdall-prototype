@@ -11,8 +11,8 @@ export interface Floor {
   name: string
   level: number
   blueprint_url: string
-  blueprint_width: number
   blueprint_height: number
+  blueprint_width: number
 }
 
 export interface Device {

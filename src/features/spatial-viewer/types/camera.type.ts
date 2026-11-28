@@ -11,7 +11,7 @@ export interface GeoCoordinate {
   lng: number
 }
 
-export interface Camera3DPayload {
+export interface BuildingCameraPayload {
   target?: Vector3
   azimuth?: number
   elevation?: number
@@ -19,7 +19,7 @@ export interface Camera3DPayload {
   duration?: number
 }
 
-export interface Camera2DPayload {
+export interface FloorCameraPayload {
   center?: GeoCoordinate
   zoom?: number
   duration?: number

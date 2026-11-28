@@ -1,8 +1,10 @@
 import { ref, type Ref } from 'vue'
-import type { Camera2DPayload, Camera3DPayload } from '../types/camera.type'
+import type { BuildingCameraPayload, FloorCameraPayload } from '../types/camera.type'
 import type {
-  Camera2DCommand,
-  Camera3DCommand,
+  BuildingCameraCommand,
+  DeviceColorCommand,
+  FloorCameraCommand,
+  FloorColorCommand,
   SpatialCommand,
   SpatialViewMode,
   SwitchViewCommand,
@@ -10,15 +12,22 @@ import type {
 
 export function useSpatialOrchestrator(
   viewMode: Ref<SpatialViewMode>,
-  onCamera3DCommand?: (
-    payload: Camera3DPayload,
+  onBuildingCameraCommand?: (
+    payload: BuildingCameraPayload,
     movement: 'ABSOLUTE' | 'RELATIVE',
     signal: AbortSignal,
   ) => Promise<void>,
-  onCamera2DCommand?: (
-    payload: Camera2DPayload,
+  onFloorCameraCommand?: (
+    payload: FloorCameraPayload,
     movement: 'ABSOLUTE' | 'RELATIVE',
     signal: AbortSignal,
+  ) => Promise<void>,
+  onFloorColorCommand?: (buildingId: string, floorId: string, color: string) => Promise<void>,
+  onDeviceColorCommand?: (
+    buildingId: string,
+    floorId: string,
+    deviceId: string,
+    color: string,
   ) => Promise<void>,
 ) {
   const isTransitioning = ref(false)
@@ -43,36 +52,80 @@ export function useSpatialOrchestrator(
     }
   }
 
-  async function executeCamera3D(command: Camera3DCommand, signal: AbortSignal): Promise<void> {
+  async function executeBuildingCamera(
+    command: BuildingCameraCommand,
+    signal: AbortSignal,
+  ): Promise<void> {
     if (viewMode.value !== '3D') {
       console.warn('Camera 3D command ignored: not in 3D mode')
       return
     }
 
-    if (!onCamera3DCommand) {
+    if (!onBuildingCameraCommand) {
       console.warn('No Camera 3D handler registered')
       return
     }
 
     console.log('Executing Camera 3D command:', command.movement, command.payload)
 
-    await onCamera3DCommand(command.payload, command.movement, signal)
+    await onBuildingCameraCommand(command.payload, command.movement, signal)
   }
 
-  async function executeCamera2D(command: Camera2DCommand, signal: AbortSignal): Promise<void> {
+  async function executeFloorCamera(
+    command: FloorCameraCommand,
+    signal: AbortSignal,
+  ): Promise<void> {
     if (viewMode.value !== '2D') {
       console.warn('Camera 2D command ignored: not in 2D mode')
       return
     }
 
-    if (!onCamera2DCommand) {
+    if (!onFloorCameraCommand) {
       console.warn('No Camera 2D handler registered')
       return
     }
 
     console.log('Executing Camera 2D command:', command.movement, command.payload)
 
-    await onCamera2DCommand(command.payload, command.movement, signal)
+    await onFloorCameraCommand(command.payload, command.movement, signal)
+  }
+
+  async function executeFloorColor(command: FloorColorCommand): Promise<void> {
+    if (!command.context || !command.context.buildingId || !command.context.floorId) {
+      return
+    }
+
+    if (!onFloorColorCommand) {
+      return
+    }
+
+    await onFloorColorCommand(
+      command.context.buildingId,
+      command.context.floorId,
+      command.payload.color,
+    )
+  }
+
+  async function executeDeviceColor(command: DeviceColorCommand): Promise<void> {
+    if (
+      !command.context ||
+      !command.context.buildingId ||
+      !command.context.floorId ||
+      !command.context.deviceId
+    ) {
+      return
+    }
+
+    if (!onDeviceColorCommand) {
+      return
+    }
+
+    await onDeviceColorCommand(
+      command.context.buildingId,
+      command.context.floorId,
+      command.context.deviceId,
+      command.payload.color,
+    )
   }
 
   async function executeCommand(command: SpatialCommand, signal: AbortSignal): Promise<void> {
@@ -80,11 +133,17 @@ export function useSpatialOrchestrator(
       case 'SWITCH_VIEW':
         await executeSwitchView(command, signal)
         break
-      case 'CAMERA_3D':
-        await executeCamera3D(command, signal)
+      case 'BUILDING_CAMERA':
+        await executeBuildingCamera(command, signal)
         break
-      case 'CAMERA_2D':
-        await executeCamera2D(command, signal)
+      case 'FLOOR_CAMERA':
+        await executeFloorCamera(command, signal)
+        break
+      case 'FLOOR_COLOR':
+        await executeFloorColor(command)
+        break
+      case 'DEVICE_COLOR':
+        await executeDeviceColor(command)
         break
       default:
         console.error('Unknown command type:', (command as any).type)
